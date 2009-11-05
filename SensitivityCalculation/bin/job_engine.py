@@ -8,6 +8,7 @@ try:
     import signal
     import errno
     import pickle
+    import types
 except ImportError:
     print "Error importing"
     raise 
@@ -17,23 +18,15 @@ sys.path.append(absolute_path)
 
 try:
     from pyWIMP.calc_objects import calculate_object_factory 
-    from utilities import utilities
+    from pyWIMP.utilities import utilities
 except ImportError:
+    print "Error importing pyWIMP modules"
     raise
-def main( total_time, \
-          threshold, \
-          energy_max, \
-          kilograms, \
-          background_rate, \
-          wimp_mass, \
-          output_file,\
-          number_iterations, \
-          cl, \
+def main( output_file,\
           num_cpus, \
           max_time, \
           model_name, \
-          constant_time, \
-          constant_energy):
+          **input_variables):
 
 
     """
@@ -64,10 +57,7 @@ def main( total_time, \
     for i in range(num_cpus):
         r, w = os.pipe()
         thread_list.append(\
-            (r,w,obj_factory( total_time, threshold, energy_max, \
-             kilograms, background_rate, wimp_mass, \
-             number_iterations, cl, constant_time, \
-             constant_energy, w, sighand)))
+            (r,w,obj_factory(w, sighand, input_variables)))
 
     # Step2: Scatter, opening and closing the relevant
     # pipes in the parent and child process
@@ -132,31 +122,36 @@ def main( total_time, \
     open_file = ROOT.TFile(output_file, "recreate")
     output_tree = ROOT.TTree("sensitivity_tree", "sensitivity_tree")
 
-    total_time_out = array.array('d', [total_time]) 
-    threshold_out = array.array('d', [threshold]) 
-    energy_max_out = array.array('d', [energy_max]) 
-    mass_of_detector_out = array.array('d', [kilograms]) 
-    background_rate_out = array.array('d', [background_rate]) 
-    wimp_mass_out = array.array('d', [wimp_mass]) 
-    model_amplitude_out = array.array('d', [0]) 
-    cross_section_out = array.array('d', [0]) 
-    likelihood_max_out = array.array('d', [0]) 
-    final_likelihood_max_out = array.array('d', [0]) 
-    modelstring = ROOT.string(model_name)
+    branch_list = []
+    for key, val in input_variables.items(): 
+        # Arg, checking types, shouldn't have to do this 
+        root_type = ''
+        array_type = ''
+        if isinstance(val, types.FloatType): 
+            root_type = 'D'
+            array_type = 'd'
+        elif isinstance(val, types.StringType):
+            root_type='string'
+            # Do nothing
+        else: # Assume integer
+            root_type = 'I'
+            array_type = 'l'
 
+        if root_type == 'string':
+            output_tree.Branch(key, ROOT.string(val))
+        else:
+            # We have to hold a reference to make sure
+            # the array doesn't get killed
+            branch_list.append(array.array(array_type, [val]))
+            output_tree.Branch(key, \
+                               branch_list[-1],\
+                               "%s/%s" % (key,root_type))
+    modelstring = ROOT.string(model_name)
     output_tree.Branch("CalculationName", modelstring)
-    output_tree.Branch("total_time", total_time_out, "total_time/D")
-    output_tree.Branch("threshold", threshold_out, "threshold/D")
-    output_tree.Branch("energy_max", energy_max_out, "energy_max/D")
-    output_tree.Branch("mass_of_detector", mass_of_detector_out, \
-                       "mass_of_detector/D")
-    output_tree.Branch("background_rate", background_rate_out, \
-                       "background_rate/D")
-    output_tree.Branch("wimp_mass", wimp_mass_out, "wimp_mass/D")
 
     # Now we deal with the list output 
     # it is a dictionary, but we don't know the names, or numbers of entries
-    # each entry's value, though is a double
+    # each entry's value, though, is a double
     array_dict = {}
     for key in results_list[0].keys():
         array_dict[key] = array.array('d', [0])
@@ -200,6 +195,9 @@ if __name__ == "__main__":
     parser.add_option("-w", "--wimp_mass", dest="wimp_mass",\
                       help="Define the wimp mass in GeV",\
                       default=10)
+    parser.add_option("-p", "--model_amplitude", dest="model_amplitude",\
+                      help="Define the initial model_amplitude",\
+                      default=0)
     parser.add_option("-o", "--output_file", dest="output_file",\
                       help="Define the output file name (full path)",\
                       default="temp.root")
@@ -240,6 +238,7 @@ if __name__ == "__main__":
     constant_time = options.constant_time
     constant_energy = options.constant_energy
     model_name = options.model_name
+    model_amplitude = options.model_amplitude
 
     if cl >= 1:
         print "CL ERROR > 1"
@@ -277,17 +276,18 @@ Process:
     # Force flush so we only see this once
     sys.stdout.flush()
     # GO
-    main(total_time, \
-         threshold, \
-         energy_max, \
-         kilograms, \
-         background_rate, \
-         wimp_mass, \
-         output_file, \
-         num_iter, \
-         cl, \
+    main(output_file, \
          num_cpus,\
          max_time, \
          model_name,\
-         constant_time, \
-         constant_energy)
+         total_time=total_time, \
+         threshold=threshold, \
+         energy_max=energy_max, \
+         mass_of_detector=kilograms, \
+         background_rate=background_rate, \
+         wimp_mass=wimp_mass, \
+         confidence_level=cl, \
+         number_iterations=num_iter, \
+         model_amplitude=model_amplitude, \
+         constant_time = constant_time, \
+         constant_energy = constant_energy)

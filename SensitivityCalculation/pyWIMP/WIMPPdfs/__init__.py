@@ -6,6 +6,7 @@ import re
 delineate = '*************************************'
 for i in range(len(__name__)):
     delineate += '*'
+print
 print delineate
 print "Performing Initialization of module: %s" % __name__
 print delineate
@@ -15,9 +16,8 @@ directory = os.path.dirname( os.path.realpath( __file__ ) )
 try: 
     temp = ROOT.MGMWimpTimeFunction
 except AttributeError:
-    try_path = os.path.dirname(directory)
-    ROOT.gSystem.Load("%s/lib/libMGDOWIMPPdfs.so" % try_path);
-    ROOT.gROOT.ProcessLine(".include \"%s/WIMPPdfs\"" % try_path);
+    ROOT.gSystem.Load("%s/libMGDOWIMPPdfs.so" % directory);
+    ROOT.gROOT.ProcessLine(".include \"%s\"" % directory);
 
 #now export the items
 all_object_files = glob.glob("%s/*.hh" % directory)

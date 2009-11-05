@@ -24,29 +24,20 @@ class WIMPModel:
     allow an interface to change those values.
     """
     def __init__(self, \
-                 total_time, \
-                 threshold, \
-                 energy_max,\
-                 kilograms, \
-                 background_rate, \
-                 wimp_mass, \
-                 number_iterations, \
-                 cl,\
-                 constant_time, \
-                 constant_energy, \
-                 output_pipe, \
-                 exit_manager):
+                 output_pipe,\
+                 exit_manager,\
+                 input_variables):
 
-        self.total_time = total_time
-        self.threshold = threshold
-        self.energy_max = energy_max
-        self.kilograms = kilograms
-        self.background_rate = background_rate
-        self.wimp_mass = wimp_mass
-        self.number_iterations = number_iterations
-        self.cl = cl
-        self.constant_time = constant_time
-        self.constant_energy = constant_energy
+        self.total_time = input_variables['total_time']
+        self.threshold = input_variables['threshold']
+        self.energy_max = input_variables['energy_max']
+        self.kilograms = input_variables['mass_of_detector']
+        self.background_rate = input_variables['background_rate']
+        self.wimp_mass = input_variables['wimp_mass']
+        self.number_iterations = input_variables['number_iterations']
+        self.cl = input_variables['confidence_level']
+        self.constant_time = input_variables['constant_time']
+        self.constant_energy = input_variables['constant_energy']
         self.output_pipe = output_pipe
         self.exit_now = False
         self.is_initialized = False
@@ -301,6 +292,13 @@ class WIMPModel:
         return list_of_values
 
 class OscillationSignalDetection(WIMPModel):
+    def __init__(self, \
+                 output_pipe,\
+                 exit_manager,\
+                 input_variables):
+    
+        WIMPModel.__init__(self, output_pipe, exit_manager, input_variables)
+        self.initial_model_amplitude = input_variables['model_amplitude']
     # overload this function for derived classes.
     def initialize(self):
 
@@ -320,9 +318,12 @@ class OscillationSignalDetection(WIMPModel):
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
 
+        self.model_normal = ROOT.RooRealVar("model_normal", \
+                                            "model_normal", \
+                                            1, 0, 100000)
         self.test_variable = self.model_normal
         self.data_set_model = self.background_model
-        self.fitting_model = self.added_pdf
+        self.fitting_model = self.model
 
     def find_confidence_value_for_model(self, \
                                         model, \
