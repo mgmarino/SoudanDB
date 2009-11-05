@@ -1,4 +1,4 @@
-SRCDIRS =  WIMPPdfs
+SRCDIRS =  pyWIMP/WIMPPdfs
 
 .PHONY: all static clean 
 
