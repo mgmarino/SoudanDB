@@ -16,8 +16,8 @@ absolute_path = os.path.dirname( os.path.dirname( os.path.realpath( __file__ ) )
 sys.path.append(absolute_path)
 
 try:
-    from pyWIMP.calc_objects import calculate_object_engine 
-    from utilities import utilities, initialize
+    from pyWIMP.calc_objects import calculate_object_factory 
+    from utilities import utilities
 except ImportError:
     raise
 def main( total_time, \
@@ -47,15 +47,18 @@ def main( total_time, \
     in their respective processes. 
     """
 
-    # Step 1: Instantiate child processes.  i call them 'threads', but there
-    # are actually a forked process.
-    initialize.initialize()
-    obj_factory = calculate_object_engine(model_name)
+    # Setup: 
+    # 
+    # Grab the object which will perform the 
+    # calculation
+    obj_factory = calculate_object_factory(model_name)
     if not obj_factory:
         print "Error finding model: ", model_name
         print "Exiting..."
         return
     
+    # Step 1: Instantiate child processes.  i call them 'threads', but there
+    # are actually a forked process.
     thread_list = []
     sighand = utilities.SignalHandler
     for i in range(num_cpus):
