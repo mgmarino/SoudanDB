@@ -21,7 +21,7 @@ def detectCPUs():
  return 1 # Default
 
 
-class ThreadClass:
+class SignalHandler:
     exit_requested = False
     #@classmethod
     def exit_handler(self, signum, frame):

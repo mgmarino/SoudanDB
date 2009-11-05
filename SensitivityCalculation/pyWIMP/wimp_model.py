@@ -1,6 +1,7 @@
 try:
     import ROOT
     import os
+    import sys
 except ImportError:
     print "Error importing"
     raise 
@@ -14,6 +15,7 @@ class AllWIMPModels:
             temp = ROOT.MGMWimpDiffRatePdf # Something wasn't loaded
         except AttributeError:
             print "Attempting to load correct libraries"
+            
             ROOT.gROOT.Macro( os.path.expanduser( '~/.rootlogon.C' ) )
             pass
         self.time = ROOT.RooRealVar("time", "Time",time_beginning,\

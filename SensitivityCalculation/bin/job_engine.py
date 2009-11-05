@@ -7,12 +7,19 @@ try:
     import optparse
     import signal
     import errno
-    from utilities import ThreadClass, detectCPUs
-    from calc_objects import calculate_object_engine 
+    import pickle
 except ImportError:
     print "Error importing"
     raise 
 
+absolute_path = os.path.dirname( os.path.dirname( os.path.realpath( __file__ ) ) )
+sys.path.append(absolute_path)
+
+try:
+    from pyWIMP.calc_objects import calculate_object_engine 
+    from utilities import utilities, initialize
+except ImportError:
+    raise
 def main( total_time, \
           threshold, \
           energy_max, \
@@ -42,6 +49,7 @@ def main( total_time, \
 
     # Step 1: Instantiate child processes.  i call them 'threads', but there
     # are actually a forked process.
+    initialize.initialize()
     obj_factory = calculate_object_engine(model_name)
     if not obj_factory:
         print "Error finding model: ", model_name
@@ -49,13 +57,14 @@ def main( total_time, \
         return
     
     thread_list = []
+    sighand = utilities.SignalHandler
     for i in range(num_cpus):
         r, w = os.pipe()
         thread_list.append(\
             (r,w,obj_factory( total_time, threshold, energy_max, \
              kilograms, background_rate, wimp_mass, \
              number_iterations, cl, constant_time, \
-             constant_energy, w, ThreadClass)))
+             constant_energy, w, sighand)))
 
     # Step2: Scatter, opening and closing the relevant
     # pipes in the parent and child process
@@ -77,34 +86,29 @@ def main( total_time, \
         
     
     print "Parent (%i) setting signal handlers." % os.getpid()
-    signal.signal(signal.SIGINT, ThreadClass.exit_handler)
-    signal.signal(signal.SIGALRM, ThreadClass.exit_handler)
+    signal.signal(signal.SIGINT, sighand.exit_handler)
+    signal.signal(signal.SIGALRM, sighand.exit_handler)
     signal.alarm(max_time)
     print "Parent (%i) waiting for processes..." % os.getpid()
     # Parent only
     # Step 3: Gather, sucking on the pipes until close
     # and waiting for all child processes to clean up 
     results_list = [] 
-    signal_received = False
     for pid, read_pipe in open_threads:
         while 1:
             try:
                 print "Parent (%i) waiting for process: %i" % (os.getpid(), pid)
-                a_list = eval(read_pipe.read())
+                a_list = pickle.loads(read_pipe.read())
                 print "Parent (%i) collected for process: %i" % (os.getpid(), pid)
                 break
             except IOError, e:
                 print "Parent (%i) received signal" % os.getpid()
                 if e.args[0] == errno.EINTR:
-                    if not signal_received: 
-                        signal_received = True
-                        signal.alarm(1)
-                    else:
-                        for apid, arp in open_threads:
-                            # Make sure they got the signal
-                            try:
-                                os.kill(apid, signal.SIGUSR1)
-                            except: pass
+                    for apid, arp in open_threads:
+                        # Make sure they got the signal
+                        try:
+                            os.kill(apid, signal.SIGUSR1)
+                        except: pass
                 else: 
                     print "Caught IOError: ", e
                     raise e
@@ -116,6 +120,10 @@ def main( total_time, \
     for i in range(len(open_threads)):
         os.waitpid(-1, 0)
     print "Gathered %i processes." % num_cpus
+    if len(results_list) == 0:
+        print "No results, exiting."
+        return
+
     # Save the output to a tree
     print "Writing TTree output."
     open_file = ROOT.TFile(output_file, "recreate")
@@ -131,7 +139,9 @@ def main( total_time, \
     cross_section_out = array.array('d', [0]) 
     likelihood_max_out = array.array('d', [0]) 
     final_likelihood_max_out = array.array('d', [0]) 
+    modelstring = ROOT.string(model_name)
 
+    output_tree.Branch("CalculationName", modelstring)
     output_tree.Branch("total_time", total_time_out, "total_time/D")
     output_tree.Branch("threshold", threshold_out, "threshold/D")
     output_tree.Branch("energy_max", energy_max_out, "energy_max/D")
@@ -140,19 +150,19 @@ def main( total_time, \
     output_tree.Branch("background_rate", background_rate_out, \
                        "background_rate/D")
     output_tree.Branch("wimp_mass", wimp_mass_out, "wimp_mass/D")
-    output_tree.Branch("model_amplitude", model_amplitude_out, \
-                       "model_amplitude/D")
-    output_tree.Branch("cross_section", cross_section_out, "cross_section/D")
-    output_tree.Branch("orig_max_likelihood", likelihood_max_out, \
-                       "orig_max_likelihood/D")
-    output_tree.Branch("final_max_likelihood", final_likelihood_max_out, \
-                       "final_max_likelihood/D")
 
-    for value,cs,orig_nll,new_nll in results_list:
-        model_amplitude_out[0] = value
-        cross_section_out[0] = cs
-        likelihood_max_out[0] = orig_nll
-        final_likelihood_max_out[0] = new_nll
+    # Now we deal with the list output 
+    # it is a dictionary, but we don't know the names, or numbers of entries
+    # each entry's value, though is a double
+    array_dict = {}
+    for key in results_list[0].keys():
+        array_dict[key] = array.array('d', [0])
+        output_tree.Branch(key, array_dict[key], \
+                       "%s/D" % key)
+
+    for dict in results_list:
+        for key in dict.keys():
+            array_dict[key][0] = dict[key]
         output_tree.Fill()
 
     output_tree.Write()
@@ -167,7 +177,8 @@ if __name__ == "__main__":
     """
     parser = optparse.OptionParser()
     parser.add_option("-n", "--num_processors", dest="numprocessors",\
-                      help="Define the number of processors", default=detectCPUs())
+                      help="Define the number of processors", \
+                      default=utilities.detectCPUs())
     parser.add_option("-T", "--total_time", dest="total_time",\
                       help="Defines the total time in years",\
                       default=5)

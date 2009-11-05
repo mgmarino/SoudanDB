@@ -3,11 +3,18 @@ try:
     from wimp_model import AllWIMPModels
     import os
     import signal
+    import sys
     import math
+    import pickle
 except ImportError:
     print "Error importing"
     raise 
 
+
+def alarm_handler(signum, frame):
+    print "Caught alarm.  Timeout?"
+    sys.stdout.flush()
+    os.kill(os.getpid(),signal.SIGINT) 
 
 class WIMPModel:
     """
@@ -44,7 +51,7 @@ class WIMPModel:
         self.exit_now = False
         self.is_initialized = False
         self.exit_manager = exit_manager 
-        self.retry_error = (0,0,0,0)
+        self.retry_error = {'again' : True} 
 
     # overload this function for derived classes.
     def initialize(self):
@@ -79,6 +86,7 @@ class WIMPModel:
         ROOT.gROOT.SetBatch()
 
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGALRM, alarm_handler)
         signal.signal(signal.SIGUSR1, self.exit_manager.exit_handler)
 
         ROOT.RooRandom.randomGenerator().SetSeed(0)
@@ -100,13 +108,16 @@ class WIMPModel:
         precision.setEpsAbs(1e-8)
         precision.method2D().setLabel("RooIntegrator2D")
 
-        # Now perform the integral
-        norm_integral_val = self.model.createIntegral(self.variables).getVal()
+        # Perform the integral.  This is a bit of sanity check, it this fails, 
+        # then we have a problem 
+        norm_integral = self.model.createIntegral(self.variables)
+        norm_integral_val = norm_integral.getVal()
         # This integral is in units of pb^{-1} kg^{-1} yr d^{-1}
+
         if norm_integral_val == 0.0:
             print "Integral defined as 0, meaning it is below numerical precision"
             print "Aborting further calculation"
-            write_pipe.write(str([]))
+            write_pipe.write(pickle.dumps({}))
             write_pipe.close()
             return
  
@@ -128,7 +139,7 @@ class WIMPModel:
                                               self.norm, self.variables, total_counts, \
                                               self.number_iterations, self.cl)
 
-        write_pipe.write(str(results_list))
+        write_pipe.write(pickle.dumps(results_list))
         write_pipe.close()
 
 
@@ -218,10 +229,10 @@ class WIMPModel:
            
         # We're done, return results
         if self.exit_manager.is_exit_requested(): return None
-        return (model_normal.getVal(), \
-                model_normal.getVal()*mult_factor,\
-                orig_Nll,\
-                new_minNll)
+        return {'model_amplitude' : model_normal.getVal(), \
+                'cross_section' : model_normal.getVal()*mult_factor,\
+                'orig_min_negloglikelihood' : orig_Nll,\
+                'final_min_negloglikelihood' : new_minNll}
      
     def scan_confidence_value_space_for_model(self, model, data_model, \
                                               model_normal, mult_factor,\
@@ -270,8 +281,100 @@ class WIMPModel:
     
         return list_of_values
 
+class OscillationSignalDetection(WIMPModel):
+    # overload this function for derived classes.
+    def initialize(self):
+
+        if self.is_initialized: return
+        self.wimpClass = AllWIMPModels(time_beginning=0, \
+            time_in_years=self.total_time, \
+            energy_threshold=self.threshold, \
+            energy_max=self.energy_max,\
+            mass_of_wimp=self.wimp_mass)
+ 
+        self.variables = ROOT.RooArgSet()
+        if self.constant_time:
+            self.wimpClass.get_time().setVal(0)
+            self.wimpClass.get_time().setConstant(True)
+        else:
+            self.variables.add(self.wimpClass.get_time())
+        if not self.constant_energy:
+            self.variables.add(self.wimpClass.get_energy())
+
+        # This is where we define our models
+        self.background_model =  self.wimpClass.get_flat_model()
+        self.model = self.wimpClass.get_WIMP_model(self.wimp_mass)
+        self.norm = self.wimpClass.get_normalization().getVal()
+        self.is_initialized = True
+
+    def find_confidence_value_for_model(self, \
+                                        model, \
+                                        data, \
+                                        model_normal, \
+                                        conf_level, \
+                                        mult_factor, \
+                                        tolerance = 0.001):
+    
+        # First ML fit, let everything float
+        if self.exit_manager.is_exit_requested(): return None
+        model_normal.setConstant(False)
+        model_normal.setVal(1)
+        result = model.fitTo(data, ROOT.RooFit.Save(True),\
+                                   ROOT.RooFit.PrintLevel(-1),\
+                                   ROOT.RooFit.Verbose(False),\
+                                   ROOT.RooFit.Hesse(False),\
+                                   ROOT.RooFit.Minos(False))#,\
+    
+        # Check fit status
+        if result.status() != 0: 
+            print "Possible error in status"
+            result.IsA().Destructor(result)
+            return self.retry_error 
+    
+        minimized_value = model_normal.getVal()
+        orig_Nll = -result.minNll()
+    
+        # IMPORTANT
+        # Sometimes, ROOT and python don't play well
+        # together wrt memory handling.  ROOT expects
+        # the "result" to be owned by the caller of the 
+        # function, but python doesn't clean it up
+        # automatically.  This is a problem since this
+        # function performs *a lot* of fits.  You will
+        # take down the machine if you do not clean them up,
+        # I almost took down Athena.  -mgm-
+        # Manually cleanning up
+        result.IsA().Destructor(result)
+    
+        model_normal.setConstant(True)
+        model_normal.setVal(0)
+        result = model.fitTo(data, \
+                                   ROOT.RooFit.Save(True),\
+                                   ROOT.RooFit.PrintLevel(-1),\
+                                   ROOT.RooFit.Verbose(False),\
+                                   ROOT.RooFit.Hesse(False),\
+                                   ROOT.RooFit.Minos(False))#,\
+        
+        # Check fit status
+        if result.status() != 0: 
+            print "Possible error in status"
+            result.IsA().Destructor(result)
+            return self.retry_error 
+    
+        new_minNll = -result.minNll()
+        # Manually cleanning up
+        result.IsA().Destructor(result)
+    
+        # We're done, return results
+        return { 'best_fit_model' : minimized_value, \
+                 'orig_min_negloglikelihood' : orig_Nll, \
+                 'final_min_negloglikelihood' : new_minNll } 
+ 
+
 
 def calculate_object_engine(calc_object_name):
     if calc_object_name == "WIMPModel":
         return WIMPModel
+    if calc_object_name == "OscillationSignalDetection":
+        return OscillationSignalDetection
     return None
