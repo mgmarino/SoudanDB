@@ -52,6 +52,10 @@ class WIMPModel:
         self.is_initialized = False
         self.exit_manager = exit_manager 
         self.retry_error = {'again' : True} 
+        self.total_counts = int(self.kilograms*\
+                                self.background_rate*\
+                                (self.energy_max-self.threshold)*\
+                                self.total_time*365)
 
     # overload this function for derived classes.
     def initialize(self):
@@ -78,16 +82,37 @@ class WIMPModel:
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
 
-
+        self.background_normal = ROOT.RooRealVar("flat_normal", \
+                                                 "flat_normal", \
+                                                 self.total_counts, \
+                                                 0,\
+                                                 3*self.total_counts)
+        self.model_normal = ROOT.RooRealVar("model_normal", \
+                                            "model_normal", \
+                                            1, 0, 100000)
+        self.model_extend = ROOT.RooExtendPdf("model_extend", \
+                                              "model_extend", \
+                                              self.model, \
+                                              model_normal)
+        self.background_extend = ROOT.RooExtendPdf("background_extend", \
+                                                   "background_extend", \
+                                                   self.background_model, \
+                                                   background_normal)
+        self.added_pdf = ROOT.RooAddPdf("b+s", \
+                                        "Background + Signal", \
+                                        ROOT.RooArgList(\
+                                        background_extend, \
+                                        model_extend))
+ 
+        self.test_variable = self.model_normal
+        self.data_set_model = self.background_model
+        self.fitting_model = self.added_pdf
+    
     def run(self):
         """
         Do the work.  Perform the fits, and return the results
         """
         ROOT.gROOT.SetBatch()
-
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-        signal.signal(signal.SIGALRM, alarm_handler)
-        signal.signal(signal.SIGUSR1, self.exit_manager.exit_handler)
 
         ROOT.RooRandom.randomGenerator().SetSeed(0)
         ROOT.RooMsgService.instance().setSilentMode(True)
@@ -96,10 +121,6 @@ class WIMPModel:
 
         # Open the pipe to write back on
         write_pipe = os.fdopen(self.output_pipe, 'w') 
-
-        total_counts = int(self.kilograms*self.background_rate*\
-            (self.energy_max-self.threshold)*\
-            self.total_time*365)
 
         # Set the numeric integration properties, this is important
         # since some of these integrals are difficult to do
@@ -111,8 +132,10 @@ class WIMPModel:
         # Perform the integral.  This is a bit of sanity check, it this fails, 
         # then we have a problem 
         norm_integral = self.model.createIntegral(self.variables)
+
+        # FixME, this integral sometimes doesn't converge, set a timeout?
+        # This integral is in units of pb^{-1} 
         norm_integral_val = norm_integral.getVal()
-        # This integral is in units of pb^{-1} kg^{-1} yr d^{-1}
 
         if norm_integral_val == 0.0:
             print "Integral defined as 0, meaning it is below numerical precision"
@@ -121,22 +144,15 @@ class WIMPModel:
             write_pipe.close()
             return
  
-        background_normal = ROOT.RooRealVar("flat_normal", "flat_normal", \
-                                      total_counts, 0, 3*total_counts)
-        model_normal = ROOT.RooRealVar("model_normal", "model_normal", \
-                                      1, 0, 100000)
-        model_extend = ROOT.RooExtendPdf("model_extend", "model_extend", \
-                                          self.model, model_normal)
-        background_extend = ROOT.RooExtendPdf("background_extend", "background_extend", \
-                                          self.background_model, background_normal)
-        added_pdf = ROOT.RooAddPdf("b+s", "Background + Signal", \
-                                   ROOT.RooArgList(background_extend, model_extend))
-        
         # Set up signal handler
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGUSR1, self.exit_manager.exit_handler)
 
-        results_list = self.scan_confidence_value_space_for_model(added_pdf, 
-                                              self.background_model, model_normal, \
-                                              self.norm, self.variables, total_counts, \
+       
+
+        results_list = self.scan_confidence_value_space_for_model(self.fitting_model, 
+                                              self.data_set_model, self.test_variable, \
+                                              self.norm, self.variables, self.total_counts, \
                                               self.number_iterations, self.cl)
 
         write_pipe.write(pickle.dumps(results_list))
@@ -159,11 +175,12 @@ class WIMPModel:
         # First ML fit, let everything float
         model_normal.setConstant(False)
         model_normal.setVal(1)
-        result = model.fitTo(data, ROOT.RooFit.Save(True),\
-                                   ROOT.RooFit.PrintLevel(-1),\
-                                   ROOT.RooFit.Verbose(False),\
-                                   ROOT.RooFit.Hesse(False),\
-                                   ROOT.RooFit.Minos(False))#,\
+        result = model.fitTo(data, \
+                             ROOT.RooFit.Save(True),\
+                             ROOT.RooFit.PrintLevel(-1),\
+                             ROOT.RooFit.Verbose(False),\
+                             ROOT.RooFit.Hesse(False),\
+                             ROOT.RooFit.Minos(False))
     
         # Check fit status
         if result.status() != 0: 
@@ -269,7 +286,9 @@ class WIMPModel:
                 # or an interrupt was signalled
                 # Get out
                 break
-            elif get_val == self.retry_error: continue
+            elif get_val == self.retry_error: 
+                # Calling function requested a retry
+                continue
     
             # Store the results
             list_of_values.append(get_val)
@@ -293,19 +312,17 @@ class OscillationSignalDetection(WIMPModel):
             mass_of_wimp=self.wimp_mass)
  
         self.variables = ROOT.RooArgSet()
-        if self.constant_time:
-            self.wimpClass.get_time().setVal(0)
-            self.wimpClass.get_time().setConstant(True)
-        else:
-            self.variables.add(self.wimpClass.get_time())
-        if not self.constant_energy:
-            self.variables.add(self.wimpClass.get_energy())
+        self.variables.add(self.wimpClass.get_time())
 
         # This is where we define our models
         self.background_model =  self.wimpClass.get_flat_model()
         self.model = self.wimpClass.get_WIMP_model(self.wimp_mass)
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
+
+        self.test_variable = self.model_normal
+        self.data_set_model = self.background_model
+        self.fitting_model = self.added_pdf
 
     def find_confidence_value_for_model(self, \
                                         model, \
@@ -319,11 +336,12 @@ class OscillationSignalDetection(WIMPModel):
         if self.exit_manager.is_exit_requested(): return None
         model_normal.setConstant(False)
         model_normal.setVal(1)
-        result = model.fitTo(data, ROOT.RooFit.Save(True),\
-                                   ROOT.RooFit.PrintLevel(-1),\
-                                   ROOT.RooFit.Verbose(False),\
-                                   ROOT.RooFit.Hesse(False),\
-                                   ROOT.RooFit.Minos(False))#,\
+        result = model.fitTo(data,\
+                             ROOT.RooFit.Save(True),\
+                             ROOT.RooFit.PrintLevel(-1),\
+                             ROOT.RooFit.Verbose(False),\
+                             ROOT.RooFit.Hesse(False),\
+                             ROOT.RooFit.Minos(False))#,\
     
         # Check fit status
         if result.status() != 0: 
@@ -349,11 +367,11 @@ class OscillationSignalDetection(WIMPModel):
         model_normal.setConstant(True)
         model_normal.setVal(0)
         result = model.fitTo(data, \
-                                   ROOT.RooFit.Save(True),\
-                                   ROOT.RooFit.PrintLevel(-1),\
-                                   ROOT.RooFit.Verbose(False),\
-                                   ROOT.RooFit.Hesse(False),\
-                                   ROOT.RooFit.Minos(False))#,\
+                             ROOT.RooFit.Save(True),\
+                             ROOT.RooFit.PrintLevel(-1),\
+                             ROOT.RooFit.Verbose(False),\
+                             ROOT.RooFit.Hesse(False),\
+                             ROOT.RooFit.Minos(False))
         
         # Check fit status
         if result.status() != 0: 
@@ -372,7 +390,7 @@ class OscillationSignalDetection(WIMPModel):
  
 
 
-def calculate_object_engine(calc_object_name):
+def calculate_object_factory(calc_object_name):
     if calc_object_name == "WIMPModel":
         return WIMPModel
     if calc_object_name == "OscillationSignalDetection":
