@@ -1,6 +1,6 @@
 try:
     import ROOT 
-    from wimp_model import AllWIMPModels
+    from pyWIMP.DMModels.wimp_model import AllWIMPModels
     import os
     import signal
     import sys
@@ -93,16 +93,16 @@ class WIMPModel:
         self.model_extend = ROOT.RooExtendPdf("model_extend", \
                                               "model_extend", \
                                               self.model, \
-                                              model_normal)
+                                              self.model_normal)
         self.background_extend = ROOT.RooExtendPdf("background_extend", \
                                                    "background_extend", \
                                                    self.background_model, \
-                                                   background_normal)
+                                                   self.background_normal)
         self.added_pdf = ROOT.RooAddPdf("b+s", \
                                         "Background + Signal", \
                                         ROOT.RooArgList(\
-                                        background_extend, \
-                                        model_extend))
+                                        self.background_extend, \
+                                        self.model_extend))
  
         self.test_variable = self.model_normal
         self.data_set_model = self.background_model

@@ -2,7 +2,7 @@ try:
     import ROOT
     import os
     import sys
-    import WIMPPdfs
+    import pyWIMP.WIMPPdfs as pdfs  
 except ImportError:
     print "Error importing"
     raise 
@@ -119,7 +119,7 @@ class AllWIMPModels:
         self.normalization.setUnit("pb pb^{-1}")
 
 
-        self.v_sub_E = WIMPPdfs.MGMWimpTimeFunction("v_sub_E", \
+        self.v_sub_E = pdfs.MGMWimpTimeFunction("v_sub_E", \
                   "Velocity of the Earth",\
                   self.v_sub_E_sub_0, self.v_sub_E_sub_1, self.time) 
         self.v_sub_E.setUnit( self.v_sub_E_sub_0.getUnit() )
@@ -134,7 +134,7 @@ class AllWIMPModels:
         # Woods-Saxon/Helm
         # The crazy expansion is to deal with poor numerical estimates below a certain
         # value
-        self.woods_saxon_helm_ff_squared = WIMPPdfs.MGMWimpHelmFFSquared(\
+        self.woods_saxon_helm_ff_squared = pdfs.MGMWimpHelmFFSquared(\
           "woods_saxon_helm_ff_squared",\
           "Helm FF^{2} ",\
           self.q, self.r_sub_n, self.s)
@@ -147,13 +147,13 @@ class AllWIMPModels:
           ROOT.RooArgList(self.energy, self.q_sub_0))
 
        
-        self.final_function = WIMPPdfs.MGMWimpDiffRatePdf("WIMPPDF_With_Time", \
+        self.final_function = pdfs.MGMWimpDiffRatePdf("WIMPPDF_With_Time", \
                          "WIMP Pdf", \
                          self.v_sub_0, self.v_sub_min, \
                          self.v_sub_E, self.R_sub_0, \
                          self.E_sub_0, self.r, self.woods_saxon_helm_ff_squared)
 
-        self.final_function_with_escape = WIMPPdfs.MGMWimpDiffRateEscapeVelPdf(\
+        self.final_function_with_escape = pdfs.MGMWimpDiffRateEscapeVelPdf(\
                          "WIMPPDF_With_Time_And_Escape_Vel", \
                          "WIMP Pdf (esc velocity)", \
                          self.v_sub_0, self.v_sub_min, \
@@ -161,7 +161,7 @@ class AllWIMPModels:
                          self.E_sub_0, self.r, \
                          self.v_sub_esc, self.woods_saxon_helm_ff_squared)
 
-        self.final_function_with_escape_no_ff = WIMPPdfs.MGMWimpDiffRateEscapeVelPdf(\
+        self.final_function_with_escape_no_ff = pdfs.MGMWimpDiffRateEscapeVelPdf(\
                          "WIMPPDF_With_Time_And_Escape_Vel", \
                          "WIMP Pdf (esc velocity)", \
                          self.v_sub_0, self.v_sub_min, \
