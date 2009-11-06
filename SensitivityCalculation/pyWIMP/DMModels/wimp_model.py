@@ -1,9 +1,17 @@
 import ROOT
-import pyWIMP.WIMPPdfs as pdfs  
 
 class AllWIMPModels:
-    def __init__(self, time_beginning=0, time_in_years=5, energy_threshold=0, energy_max=20,\
-                 mass_of_wimp=20, kilograms=1):
+    def __init__(self, \
+                 time_beginning=0, \
+                 time_in_years=5, \
+                 energy_threshold=0, \
+                 energy_max=20,\
+                 mass_of_wimp=20, \
+                 kilograms=1,\
+                 constant_quenching=True):
+        # Normally, we don't want to do this, but this keeps 
+        # it from importing this module until the last moment.
+        import pyWIMP.WIMPPdfs as pdfs  
         self.time = ROOT.RooRealVar("time", "Time",time_beginning,\
                     time_in_years, "years") 
         self.ee_energy = ROOT.RooRealVar("ee_energy", "ee_energy", \
@@ -12,9 +20,19 @@ class AllWIMPModels:
                          0, 10000 )
 
         # constant quenching
-        self.quenching = ROOT.RooRealVar("quenching", "quenching", 0.2)
-        #self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
-        #                  "1./@0", ROOT.RooArgList(self.quenching))
+        if constant_quenching:
+            self.quenching = ROOT.RooRealVar("quenching", "quenching", 0.2)
+            self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
+                              "1./@0", ROOT.RooArgList(self.quenching))
+            self.energy = ROOT.RooFormulaVar("energy", "Energy", \
+                          "@0/@1", ROOT.RooArgList(self.ee_energy, \
+                          self.quenching))
+        else:
+            self.energy = ROOT.RooFormulaVar("energy", "Energy", \
+                          "TMath::Power(@0/0.14,0.840336)", \
+                          ROOT.RooArgList(self.ee_energy))
+            self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
+                              "4.38523*TMath::Power(@0, -0.1596638655)", ROOT.RooArgList(self.ee_energy))
 
         self.threshold = ROOT.RooRealVar("threshold", "threshold", \
                          energy_threshold)
@@ -22,15 +40,7 @@ class AllWIMPModels:
                          kilograms)
         self.energy_max = ROOT.RooRealVar("energy_max", "energy_max", \
                           energy_max)
-        #self.energy = ROOT.RooFormulaVar("energy", "Energy", \
-        #              "@0/@1", ROOT.RooArgList(self.ee_energy, \
-        #              self.quenching))
 
-        self.energy = ROOT.RooFormulaVar("energy", "Energy", \
-                      "TMath::Power(@0/0.14,0.840336)", \
-                      ROOT.RooArgList(self.ee_energy))
-        self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
-                          "4.38523*TMath::Power(@0, 0.1596638655)", ROOT.RooArgList(self.ee_energy))
 
         self.v_sub_E_sub_0 = ROOT.RooRealVar("v_sub_E_sub_0", \
                         "Constant in Velocity Function", 244, "km s^-1") 

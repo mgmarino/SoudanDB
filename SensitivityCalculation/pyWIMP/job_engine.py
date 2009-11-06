@@ -1,29 +1,22 @@
 #!/usr/bin/env python
-try:
-    import sys
-    import os
-    import optparse
-    import types
-    import inspect
-except ImportError:
-    print "Error importing"
-    raise 
+import sys
+import os
+import optparse
+import types
+import inspect
+import pyWIMP.calc_objects as co
+from pyWIMP.utilities import utilities
+import array
+import signal
+import errno
+import pickle
 
-absolute_path = os.path.dirname( os.path.dirname( os.path.realpath( __file__ ) ) )
-sys.path.append(absolute_path)
-
-try:
-    import pyWIMP.calc_objects as co
-    from pyWIMP.utilities import utilities
-except ImportError:
-    print "Error importing pyWIMP modules"
-    raise
-def main( output_file,\
-          num_cpus, \
-          num_iter, \
-          max_time, \
-          model_factory, \
-          input_variables):
+def job_engine( output_file,\
+                num_cpus, \
+                num_iter, \
+                max_time, \
+                model_factory, \
+                input_variables):
 
 
     """
@@ -38,10 +31,6 @@ def main( output_file,\
     """
 
     import ROOT
-    import array
-    import signal
-    import errno
-    import pickle
     # Setup: 
     # 
     # Grab the object which will perform the 
@@ -170,7 +159,8 @@ if __name__ == "__main__":
     Following are command line options for the script.
     """
 
-    # Assume the first argument is the name of the processor to use
+    # Assume the first argument is the 
+    # name of the processor to use
     available_models = []
     for name in co.__dict__.keys():
         if name in ['ROOT']: continue # avoid loading ROOT
@@ -178,6 +168,7 @@ if __name__ == "__main__":
             available_models.append(name) 
 
     def usage(available_models):
+        print 
         print "Available models: "
         for amodel in available_models:
             print "  ", amodel
@@ -199,6 +190,9 @@ if __name__ == "__main__":
     obj_factory = getattr(co, model_name) 
  
     parser = optparse.OptionParser(usage="usage: %prog model [options]")
+
+    # Dynamically set the options for this 
+    # particular computation model
     req_items = obj_factory.get_requested_values()
     for key, val in req_items.items():
         found_type = ''
@@ -218,6 +212,8 @@ if __name__ == "__main__":
                           help=val[0], \
                           type=found_type, \
                           default=val[1])
+
+    # Set the other options that we know are required
     parser.add_option("-o", "--output_file", dest="output_file",\
                       help="Define the output file name (full path)",\
                       default="temp.root")
@@ -233,6 +229,7 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
     
+    # Grab the global options
     output_file = options.output_file 
     num_cpus = int(options.numprocessors)
     max_time = int(options.max_time)
@@ -243,6 +240,7 @@ if __name__ == "__main__":
     for key in req_items.keys():
         output_dict[key] = getattr(options, key)
     
+    # Give a summary of what was input
     max_string = str(max_time)
     if max_time == 0:
        max_string = "Infinity" 
@@ -250,6 +248,7 @@ if __name__ == "__main__":
 Summary:
 Calculation:
     """
+
     for key, val in output_dict.items():
         output_string += """
     %s: %s """ % (req_items[key][0], str(val))
@@ -266,11 +265,12 @@ Process:
     print output_string
     # Force flush so we only see this once
     sys.stdout.flush()
+
     # GO
-    main(output_file, \
-         num_cpus,\
-         num_iter,\
-         max_time, \
-         obj_factory,\
-         output_dict)
+    job_engine(output_file, \
+               num_cpus,\
+               num_iter,\
+               max_time, \
+               obj_factory,\
+               output_dict)
          

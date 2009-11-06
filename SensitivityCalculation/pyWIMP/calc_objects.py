@@ -22,6 +22,7 @@ class WIMPModel:
                 'background_rate' : ('Background rate (counts/keV/kg/day)', 0.1),\
                 'wimp_mass' : ('WIMP mass (GeV/c^-2)', 10),\
                 'confidence_level' : ('Confidence level (0 -> 1)', 0.9),\
+                'variable_quenching' : ('Set to use variable quenching', False),\
                 'constant_time' : ('Set time as constant', False),\
                 'constant_energy' : ('Set energy as constant', False) }
     get_requested_values = classmethod(get_requested_values)
@@ -57,7 +58,8 @@ class WIMPModel:
             time_in_years=self.total_time, \
             energy_threshold=self.threshold, \
             energy_max=self.energy_max,\
-            mass_of_wimp=self.wimp_mass)
+            mass_of_wimp=self.wimp_mass,
+            constant_quenching=(not self.variable_quenching))
  
         self.variables = ROOT.RooArgSet()
         if self.constant_time:
