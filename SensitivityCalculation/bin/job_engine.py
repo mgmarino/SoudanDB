@@ -1,14 +1,8 @@
 #!/usr/bin/env python
 try:
-    import ROOT
     import sys
     import os
-    import array
     import optparse
-    import signal
-    import errno
-    import pickle
-    import types
 except ImportError:
     print "Error importing"
     raise 
@@ -24,9 +18,10 @@ except ImportError:
     raise
 def main( output_file,\
           num_cpus, \
+          num_iter, \
           max_time, \
-          model_name, \
-          **input_variables):
+          model_factory, \
+          input_variables):
 
 
     """
@@ -40,16 +35,17 @@ def main( output_file,\
     in their respective processes. 
     """
 
+    import ROOT
+    import array
+    import signal
+    import errno
+    import pickle
+    import types
     # Setup: 
     # 
     # Grab the object which will perform the 
     # calculation
-    obj_factory = calculate_object_factory(model_name)
-    if not obj_factory:
-        print "Error finding model: ", model_name
-        print "Exiting..."
-        return
-    
+   
     # Step 1: Instantiate child processes.  i call them 'threads', but there
     # are actually a forked process.
     thread_list = []
@@ -57,7 +53,7 @@ def main( output_file,\
     for i in range(num_cpus):
         r, w = os.pipe()
         thread_list.append(\
-            (r,w,obj_factory(w, sighand, input_variables)))
+            (r,w,model_factory(w, sighand, num_iter, input_variables)))
 
     # Step2: Scatter, opening and closing the relevant
     # pipes in the parent and child process
@@ -146,7 +142,7 @@ def main( output_file,\
             output_tree.Branch(key, \
                                branch_list[-1],\
                                "%s/%s" % (key,root_type))
-    modelstring = ROOT.string(model_name)
+    modelstring = ROOT.string(model_factory.__name__)
     output_tree.Branch("CalculationName", modelstring)
 
     # Now we deal with the list output 
@@ -167,127 +163,94 @@ def main( output_file,\
     open_file.Close()
     print "Done."
    
-
 if __name__ == "__main__":
     """
     This is the main set of commands called when this python module is executed.
     Following are command line options for the script.
     """
-    parser = optparse.OptionParser()
-    parser.add_option("-n", "--num_processors", dest="numprocessors",\
-                      help="Define the number of processors", \
-                      default=utilities.detectCPUs())
-    parser.add_option("-T", "--total_time", dest="total_time",\
-                      help="Defines the total time in years",\
-                      default=5)
-    parser.add_option("-t", "--threshold", dest="threshold",\
-                      help="Define the threshold",\
-                      default=0)
-    parser.add_option("-e", "--energy_max", dest="energy_max",\
-                      help="Define the maximum_energy",\
-                      default=80)
-    parser.add_option("-m", "--detector_mass", dest="detector_mass",\
-                      help="Define the detector total mass in kg",\
-                      default=10)
-    parser.add_option("-r", "--background_rate", dest="background_rate",\
-                      help="Define the background rate in counts/kg/keV/day",\
-                      default=0.01)
-    parser.add_option("-w", "--wimp_mass", dest="wimp_mass",\
-                      help="Define the wimp mass in GeV",\
-                      default=10)
-    parser.add_option("-p", "--model_amplitude", dest="model_amplitude",\
-                      help="Define the initial model_amplitude",\
-                      default=0)
+
+    # Assume the first argument is the name of the processor to use
+    available_models = calculate_object_factory()
+    def usage(available_models):
+        print "Available models: "
+        for amodel in available_models:
+            print "  ", amodel
+        print "For help with a particular model, type:"
+        print
+        print "%s model --help" % sys.argv[0]
+        print
+        print "Exiting..."
+
+    if (len(sys.argv) < 2):
+        usage(available_models)
+        sys.exit(1)
+
+    model_name = sys.argv[1]
+    obj_factory = calculate_object_factory(model_name)
+    if not obj_factory:
+        print "Error finding model: ", model_name
+        usage(available_models)
+        sys.exit(1)
+ 
+    parser = optparse.OptionParser(usage="usage: %prog model [options]")
+    req_items = obj_factory.get_requested_values()
+    for key, val in req_items.items():
+        parser.add_option("--%s" % key, dest=key,\
+                      help=val[0], \
+                      default=val[1])
     parser.add_option("-o", "--output_file", dest="output_file",\
                       help="Define the output file name (full path)",\
                       default="temp.root")
-    parser.add_option("-d", "--model", dest="model_name",\
-                      help="Define the calculation model to use",\
-                      default="WIMPModel")
-    parser.add_option("-i", "--num_iter", dest="num_iter",\
-                      help="Define the number of iterations",\
-                      default=10)
-    parser.add_option("-c", "--confidence_level", dest="confidence_level",\
-                      help="Define the CL of the calculation",\
-                      default=0.9)
+    parser.add_option("-n", "--num_cpus", dest="numprocessors",\
+                      help="Define the number of cpus used",\
+                      default=utilities.detectCPUs())
     parser.add_option("-a", "--max_time", dest="max_time",\
                       help="Set the max time [seconds] until this program shuts down",\
                       default=0)
-    parser.add_option("--constant_time", action="store_true", \
-                      dest="constant_time",\
-                      help="Integrate over time, do not fit over time",\
-                      default=False)
-    parser.add_option("--constant_energy", action="store_true", \
-                      dest="constant_energy",\
-                      help="Integrate over energy, do not fit over energy",\
-                      default=False)
-
+    parser.add_option("-i", "--num_iter", dest="num_iter",\
+                      help="Number of iterations per cpu",\
+                      default=10)
 
     (options, args) = parser.parse_args()
-    total_time = float(options.total_time)
-    threshold = float(options.threshold)
-    energy_max = float(options.energy_max)
-    kilograms = float(options.detector_mass)
-    background_rate = float(options.background_rate) # units of counts/keV/kg/d
-    wimp_mass = float(options.wimp_mass) # units of GeV
-    output_file = options.output_file # units of GeV
+    
+    output_file = options.output_file 
     num_cpus = int(options.numprocessors)
-    num_iter = int(options.num_iter)
-    cl = float(options.confidence_level)
     max_time = int(options.max_time)
-    constant_time = options.constant_time
-    constant_energy = options.constant_energy
-    model_name = options.model_name
-    model_amplitude = options.model_amplitude
+    num_iter = int(options.num_iter)
 
-    if cl >= 1:
-        print "CL ERROR > 1"
-        sys.exit(1)
-
+    # Now grab the others
+    output_dict = {}
+    for key in req_items.keys():
+        output_dict[key] = getattr(options, key)
+    
     max_string = str(max_time)
     if max_time == 0:
        max_string = "Infinity" 
-    print """
+    output_string = """
 Summary:
 Calculation:
-    Threshold: %g keV
-    Maximum Energy: %g keV
-    Mass of Detector(s): %g kg
-    Background Rate: %g counts/keV/kg/d
-    Mass of Wimp: %g GeV
-    Total time: %g years
-    Constant Time: %s
-    Constant Energy: %s
-    CL: %g 
-    Model name: %s
+    """
+    for key, val in output_dict.items():
+        output_string += """
+    %s: %s """ % (req_items[key][0], val)
 
+    output_string += """
 Process:
     Using cpu number: %i
     Iterations on each cpu: %i
     Output file: %s
     Max time (seconds): %s
-    """ % ( threshold, energy_max, \
-            kilograms, background_rate,\
-            wimp_mass, total_time, str(constant_time),\
-            str(constant_energy), cl, model_name,\
-            num_cpus, num_iter, output_file,\
+    """ % ( num_cpus, num_iter, output_file,\
             max_string )
 
+    print output_string
     # Force flush so we only see this once
     sys.stdout.flush()
     # GO
     main(output_file, \
          num_cpus,\
+         num_iter,\
          max_time, \
-         model_name,\
-         total_time=total_time, \
-         threshold=threshold, \
-         energy_max=energy_max, \
-         mass_of_detector=kilograms, \
-         background_rate=background_rate, \
-         wimp_mass=wimp_mass, \
-         confidence_level=cl, \
-         number_iterations=num_iter, \
-         model_amplitude=model_amplitude, \
-         constant_time = constant_time, \
-         constant_energy = constant_energy)
+         obj_factory,\
+         output_dict)
+         

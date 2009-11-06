@@ -1,15 +1,6 @@
-try:
-    import ROOT 
-    from pyWIMP.DMModels.wimp_model import AllWIMPModels
-    import os
-    import signal
-    import sys
-    import math
-    import pickle
-except ImportError:
-    print "Error importing"
-    raise 
-
+import os
+import sys
+import ROOT 
 
 def alarm_handler(signum, frame):
     print "Caught alarm.  Timeout?"
@@ -23,27 +14,40 @@ class WIMPModel:
     FixME: This class uses AllWIMPModels class, but doesn't
     allow an interface to change those values.
     """
+    
+    def get_requested_values(cls):
+        """
+        Returns requested values plus defaults
+        """
+        return {'total_time' : ('Total time (year)', 5),\
+                'threshold' : ('Threshold (keV)', 1),\
+                'energy_max' : ('Maximum energy (keV)', 50),\
+                'mass_of_detector' : ('Mass of detector (kg)', 1),\
+                'background_rate' : ('Background rate (counts/keV/kg/day)', 0.1),\
+                'wimp_mass' : ('WIMP mass (GeV/c^-2)', 10),\
+                'confidence_level' : ('Confidence level (0 -> 1)', 0.9),\
+                'constant_time' : ('Set time as constant', False),\
+                'constant_energy' : ('Set energy as constant', False) }
+    get_requested_values = classmethod(get_requested_values)
+
     def __init__(self, \
                  output_pipe,\
                  exit_manager,\
+                 num_iterations,\
                  input_variables):
 
-        self.total_time = input_variables['total_time']
-        self.threshold = input_variables['threshold']
-        self.energy_max = input_variables['energy_max']
-        self.kilograms = input_variables['mass_of_detector']
-        self.background_rate = input_variables['background_rate']
-        self.wimp_mass = input_variables['wimp_mass']
-        self.number_iterations = input_variables['number_iterations']
-        self.cl = input_variables['confidence_level']
-        self.constant_time = input_variables['constant_time']
-        self.constant_energy = input_variables['constant_energy']
+        for akey, val in self.get_requested_values().items():
+            aval = val[1]
+            if akey in input_variables.keys():
+                aval = input_variables[akey]
+            setattr(self,akey, aval) 
+        self.number_iterations = num_iterations
         self.output_pipe = output_pipe
         self.exit_now = False
         self.is_initialized = False
         self.exit_manager = exit_manager 
         self.retry_error = {'again' : True} 
-        self.total_counts = int(self.kilograms*\
+        self.total_counts = int(self.mass_of_detector*\
                                 self.background_rate*\
                                 (self.energy_max-self.threshold)*\
                                 self.total_time*365)
@@ -52,6 +56,7 @@ class WIMPModel:
     def initialize(self):
 
         if self.is_initialized: return
+        from pyWIMP.DMModels.wimp_model import AllWIMPModels
         self.wimpClass = AllWIMPModels(time_beginning=0, \
             time_in_years=self.total_time, \
             energy_threshold=self.threshold, \
@@ -103,6 +108,8 @@ class WIMPModel:
         """
         Do the work.  Perform the fits, and return the results
         """
+        import pickle
+        import signal
         ROOT.gROOT.SetBatch()
 
         ROOT.RooRandom.randomGenerator().SetSeed(0)
@@ -144,7 +151,7 @@ class WIMPModel:
         results_list = self.scan_confidence_value_space_for_model(self.fitting_model, 
                                               self.data_set_model, self.test_variable, \
                                               self.norm, self.variables, self.total_counts, \
-                                              self.number_iterations, self.cl)
+                                              self.number_iterations, self.confidence_level)
 
         write_pipe.write(pickle.dumps(results_list))
         write_pipe.close()
@@ -159,6 +166,7 @@ class WIMPModel:
                                         tolerance = 0.001):
     
         # Error check
+        import math
         if conf_level < 0:
             print "Error, CL must be greater than 0"
             return None
@@ -292,13 +300,11 @@ class WIMPModel:
         return list_of_values
 
 class OscillationSignalDetection(WIMPModel):
-    def __init__(self, \
-                 output_pipe,\
-                 exit_manager,\
-                 input_variables):
-    
-        WIMPModel.__init__(self, output_pipe, exit_manager, input_variables)
-        self.initial_model_amplitude = input_variables['model_amplitude']
+    def get_requested_values(cls):
+        adict = WIMPModel.get_requested_values()
+        adict['model_amplitude'] = ('Initial model amplitude', 1)
+        return adict
+    get_requested_values = classmethod(get_requested_values)
     # overload this function for derived classes.
     def initialize(self):
 
@@ -391,9 +397,10 @@ class OscillationSignalDetection(WIMPModel):
  
 
 
-def calculate_object_factory(calc_object_name):
-    if calc_object_name == "WIMPModel":
-        return WIMPModel
-    if calc_object_name == "OscillationSignalDetection":
-        return OscillationSignalDetection
+def calculate_object_factory(calc_object_name = None):
+    available_classes = ['WIMPModel',\
+                         'OscillationSignalDetection']
+    if not calc_object_name: return available_classes
+    if calc_object_name in available_classes:
+        return eval(calc_object_name)
     return None

@@ -1,16 +1,9 @@
-try:
-    import ROOT
-    import os
-    import sys
-    import pyWIMP.WIMPPdfs as pdfs  
-except ImportError:
-    print "Error importing"
-    raise 
-
 
 class AllWIMPModels:
     def __init__(self, time_beginning=0, time_in_years=5, energy_threshold=0, energy_max=20,\
                  mass_of_wimp=20, kilograms=1):
+        import ROOT
+        import pyWIMP.WIMPPdfs as pdfs  
         self.time = ROOT.RooRealVar("time", "Time",time_beginning,\
                     time_in_years, "years") 
         self.ee_energy = ROOT.RooRealVar("ee_energy", "ee_energy", \
