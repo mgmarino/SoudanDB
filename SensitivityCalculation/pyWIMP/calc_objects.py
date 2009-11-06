@@ -302,14 +302,19 @@ class WIMPModel:
 class OscillationSignalDetection(WIMPModel):
     def get_requested_values(cls):
         adict = WIMPModel.get_requested_values()
-        adict['model_amplitude'] = ('Initial model amplitude', 1)
+        del adict['constant_energy']
+        del adict['constant_time']
+        adict['model_amplitude'] = ('Initial model amplitude', 0.1)
         return adict
     get_requested_values = classmethod(get_requested_values)
+
     # overload this function for derived classes.
     def initialize(self):
 
         if self.is_initialized: return
-        self.wimpClass = AllWIMPModels(time_beginning=0, \
+        from pyWIMP.DMModels.wimp_model import AllWIMPModels
+        self.wimpClass = AllWIMPModels(\
+            time_beginning=0, \
             time_in_years=self.total_time, \
             energy_threshold=self.threshold, \
             energy_max=self.energy_max,\
@@ -319,17 +324,48 @@ class OscillationSignalDetection(WIMPModel):
         self.variables.add(self.wimpClass.get_time())
 
         # This is where we define our models
-        self.background_model =  self.wimpClass.get_flat_model()
-        self.model = self.wimpClass.get_WIMP_model(self.wimp_mass)
-        self.norm = self.wimpClass.get_normalization().getVal()
+        self.background =  self.wimpClass.get_flat_model()
+        self.model = self.wimpClass.get_simple_oscillation_model()
+        self.norm = 1 
         self.is_initialized = True
+
+        
+        if self.model_amplitude > 1: self.model_amplitude = 1
+        elif self.model_amplitude < 0: self.model_amplitude = 0
+        self.signal_percentage = ROOT.RooRealVar("signal_percentage", \
+                                            "signal_percentage", \
+                                            self.model_amplitude)
+        self.background_model = ROOT.RooAddPdf(\
+                                "background",\
+                                "Data Model",\
+                                self.model,\
+                                self.background,\
+                                self.signal_percentage)
 
         self.model_normal = ROOT.RooRealVar("model_normal", \
                                             "model_normal", \
-                                            1, 0, 100000)
+                                            1, 0, self.total_counts)
+        self.back_normal = ROOT.RooRealVar("back_normal", \
+                                           "back_normal", \
+                                            self.total_counts, \
+                                            0, 3*self.total_counts)
+
+        self.model_extend = ROOT.RooExtendPdf("model_extend",\
+                                              "model_extend",\
+                                              self.model,\
+                                              self.model_normal)
+
+        self.back_extend = ROOT.RooExtendPdf("back_extend",\
+                                             "back_extend",\
+                                             self.background,\
+                                             self.back_normal)
         self.test_variable = self.model_normal
         self.data_set_model = self.background_model
-        self.fitting_model = self.model
+        self.fitting_model = ROOT.RooAddPdf("s+b", \
+                             "Signal + Background",\
+                             ROOT.RooArgList(\
+                             self.model_extend,\
+                             self.back_extend))
 
     def find_confidence_value_for_model(self, \
                                         model, \

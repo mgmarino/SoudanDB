@@ -3,6 +3,7 @@ try:
     import sys
     import os
     import optparse
+    import types
 except ImportError:
     print "Error importing"
     raise 
@@ -40,7 +41,6 @@ def main( output_file,\
     import signal
     import errno
     import pickle
-    import types
     # Setup: 
     # 
     # Grab the object which will perform the 
@@ -195,9 +195,23 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(usage="usage: %prog model [options]")
     req_items = obj_factory.get_requested_values()
     for key, val in req_items.items():
-        parser.add_option("--%s" % key, dest=key,\
-                      help=val[0], \
-                      default=val[1])
+        found_type = ''
+        if isinstance(val[1], types.StringType): 
+            found_type = 'string'
+        elif isinstance(val[1], types.BooleanType): 
+            found_type = 'bool' 
+        else:
+            found_type = 'float'
+        if found_type == 'bool':
+            parser.add_option("--%s" % key, dest=key,\
+                          help=val[0], \
+                          action="store_true",\
+                          default=val[1])
+        else:
+            parser.add_option("--%s" % key, dest=key,\
+                          help=val[0], \
+                          type=found_type, \
+                          default=val[1])
     parser.add_option("-o", "--output_file", dest="output_file",\
                       help="Define the output file name (full path)",\
                       default="temp.root")
@@ -232,7 +246,7 @@ Calculation:
     """
     for key, val in output_dict.items():
         output_string += """
-    %s: %s """ % (req_items[key][0], val)
+    %s: %s """ % (req_items[key][0], str(val))
 
     output_string += """
 Process:

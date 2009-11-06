@@ -173,6 +173,13 @@ class AllWIMPModels:
                          "0.751*@3/(@1*@2)*exp(-0.561*@0/(@1*@2))", \
                          ROOT.RooArgList(self.energy, \
                          self.E_sub_0, self.r,self.R_sub_0))
+
+        self.simple_oscillation_model = ROOT.RooGenericPdf(\
+                                  "simple_osc", \
+                                  "Simple Oscillation Model",\
+                                  "1+sin(TMath::TwoPi()*@0)",\
+                                  ROOT.RooArgList(self.time))
+                                  
        
     def get_simple_model(self):
         return self.simple_model
@@ -209,6 +216,8 @@ class AllWIMPModels:
     def get_flat_model(self):
         return self.flat_pdf
 
+    def get_simple_oscillation_model(self):
+        return self.simple_oscillation_model
 
 
 
