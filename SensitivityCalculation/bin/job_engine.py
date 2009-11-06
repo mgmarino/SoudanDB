@@ -4,6 +4,7 @@ try:
     import os
     import optparse
     import types
+    import inspect
 except ImportError:
     print "Error importing"
     raise 
@@ -12,7 +13,7 @@ absolute_path = os.path.dirname( os.path.dirname( os.path.realpath( __file__ ) )
 sys.path.append(absolute_path)
 
 try:
-    from pyWIMP.calc_objects import calculate_object_factory 
+    import pyWIMP.calc_objects as co
     from pyWIMP.utilities import utilities
 except ImportError:
     print "Error importing pyWIMP modules"
@@ -170,7 +171,12 @@ if __name__ == "__main__":
     """
 
     # Assume the first argument is the name of the processor to use
-    available_models = calculate_object_factory()
+    available_models = []
+    for name in co.__dict__.keys():
+        if name in ['ROOT']: continue # avoid loading ROOT
+        if inspect.isclass(getattr(co, name)):
+            available_models.append(name) 
+
     def usage(available_models):
         print "Available models: "
         for amodel in available_models:
@@ -186,11 +192,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     model_name = sys.argv[1]
-    obj_factory = calculate_object_factory(model_name)
-    if not obj_factory:
+    if not model_name in available_models:
         print "Error finding model: ", model_name
         usage(available_models)
         sys.exit(1)
+    obj_factory = getattr(co, model_name) 
  
     parser = optparse.OptionParser(usage="usage: %prog model [options]")
     req_items = obj_factory.get_requested_values()

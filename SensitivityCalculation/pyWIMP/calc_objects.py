@@ -1,12 +1,9 @@
-import os
-import sys
-import ROOT 
+#
+# calc_object exports classes which can be 
+# used for calculation of sensitivities
+#
 
-def alarm_handler(signum, frame):
-    print "Caught alarm.  Timeout?"
-    sys.stdout.flush()
-    os.kill(os.getpid(),signal.SIGINT) 
-
+import ROOT
 class WIMPModel:
     """
     Class handles performing a sensitivity calculation
@@ -14,7 +11,6 @@ class WIMPModel:
     FixME: This class uses AllWIMPModels class, but doesn't
     allow an interface to change those values.
     """
-    
     def get_requested_values(cls):
         """
         Returns requested values plus defaults
@@ -110,6 +106,7 @@ class WIMPModel:
         """
         import pickle
         import signal
+        import os
         ROOT.gROOT.SetBatch()
 
         ROOT.RooRandom.randomGenerator().SetSeed(0)
@@ -259,7 +256,7 @@ class WIMPModel:
         i = 0
         confidence_value = ROOT.TMath.ChisquareQuantile(cl, 1) 
         while i < number_iterations:
-            print "Process %s: Iteration (%i) of (%i)" % (os.getpid(), i+1, number_iterations)
+            #print "Process %s: Iteration (%i) of (%i)" % (os.getpid(), i+1, number_iterations)
             # Generate the data, use Extended flag
             # because the number_of_events is just
             # an expected number.
@@ -432,11 +429,3 @@ class OscillationSignalDetection(WIMPModel):
                  'final_min_negloglikelihood' : new_minNll } 
  
 
-
-def calculate_object_factory(calc_object_name = None):
-    available_classes = ['WIMPModel',\
-                         'OscillationSignalDetection']
-    if not calc_object_name: return available_classes
-    if calc_object_name in available_classes:
-        return eval(calc_object_name)
-    return None
