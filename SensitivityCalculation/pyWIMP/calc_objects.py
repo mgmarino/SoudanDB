@@ -72,7 +72,7 @@ class WIMPModel:
 
         # This is where we define our models
         self.background_model =  self.wimpClass.get_flat_model()
-        self.model = self.wimpClass.get_WIMP_model(self.wimp_mass)
+        self.model = self.wimpClass.get_WIMP_model_with_escape_vel(self.wimp_mass)
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
 
