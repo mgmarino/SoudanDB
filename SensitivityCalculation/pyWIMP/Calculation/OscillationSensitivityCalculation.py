@@ -13,7 +13,7 @@ class OscillationSensitivityCalculation(BaseCalculation.BaseCalculation):
                                         tolerance = 0.001):
     
         # First ML fit, let everything float
-        if self.exit_manager.is_exit_requested(): return None
+        if self.is_exit_requested(): return None
         model_amplitude.setConstant(False)
         model_amplitude.setVal(1)
         result = model.fitTo(data,\

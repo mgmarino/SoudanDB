@@ -1,9 +1,13 @@
 import ROOT
 class BaseCalculation:
 
-    def __init__(self, exit_manager):
+    def __init__(self, exit_manager = None):
         self.exit_manager = exit_manager
         self.retry_error = {'again' : True} 
+
+    def is_exit_requested(self):
+        if not self.exit_manager: return False
+        return exit_manager.is_exit_requested()
 
     def scan_confidence_value_space_for_model(self, \
                                               model, \

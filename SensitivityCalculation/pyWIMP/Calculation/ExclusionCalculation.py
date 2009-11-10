@@ -2,7 +2,13 @@ import BaseCalculation
 import ROOT
 import math
 
-class SensitivityCalculation(BaseCalculation.BaseCalculation):
+class ExclusionCalculation(BaseCalculation.BaseCalculation):
+    """
+    This class is an engine for calculating an exclusion for
+    a certain model given a data set.  All variables are RooFit
+    type variables.
+    """
+
     def find_confidence_value_for_model(self, \
                                         model, \
                                         data, \
@@ -57,7 +63,7 @@ class SensitivityCalculation(BaseCalculation.BaseCalculation):
         number_of_tries = 0
     
         number_of_steps = 0
-        while not self.exit_manager.is_exit_requested():
+        while not self.is_exit_requested():
             result = model.fitTo(data, \
                                  ROOT.RooFit.Save(True),\
                                  ROOT.RooFit.PrintLevel(print_level),\
@@ -91,7 +97,7 @@ class SensitivityCalculation(BaseCalculation.BaseCalculation):
             if number_of_steps > 200: return self.retry_error
            
         # We're done, return results
-        if self.exit_manager.is_exit_requested(): return None
+        if self.is_exit_requested(): return None
         return {'model_amplitude' : model_amplitude.getVal(), \
                 'cross_section' : model_amplitude.getVal()*mult_factor,\
                 'orig_min_negloglikelihood' : orig_Nll,\
