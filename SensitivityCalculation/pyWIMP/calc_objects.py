@@ -2,8 +2,10 @@
 # calc_object exports classes which can be 
 # used for calculation of sensitivities
 #
-
 import ROOT
+import Calculation.SensitivityCalculation as sc
+import Calculation.OscillationSensitivityCalculation as osc
+
 class WIMPModel:
     """
     Class handles performing a sensitivity calculation
@@ -45,7 +47,6 @@ class WIMPModel:
         self.exit_now = False
         self.is_initialized = False
         self.exit_manager = exit_manager 
-        self.retry_error = {'again' : True} 
         self.total_counts = int(self.mass_of_detector*\
                                 self.background_rate*\
                                 (self.energy_max-self.threshold)*\
@@ -68,6 +69,9 @@ class WIMPModel:
             energy_max=self.energy_max,\
             mass_of_wimp=self.wimp_mass,
             constant_quenching=(not self.variable_quenching))
+
+        self.calculation_class = \
+            sc.SensitivityCalculation(self.exit_manager)
  
         self.variables = ROOT.RooArgSet()
         if self.constant_time:
@@ -160,169 +164,22 @@ class WIMPModel:
 
        
 
-        results_list = self.scan_confidence_value_space_for_model(self.fitting_model, 
-                                              self.data_set_model, self.test_variable, \
-                                              self.norm, self.variables, self.total_counts, \
-                                              self.number_iterations, self.confidence_level)
+        results_list = \
+            self.calculation_class.scan_confidence_value_space_for_model(\
+                self.fitting_model, \
+                self.data_set_model, \
+                self.test_variable, \
+                self.norm, \
+                self.variables, \
+                self.total_counts, \
+                self.number_iterations, \
+                self.confidence_level,\
+                self.show_plots,\
+                self.debug)
 
         write_pipe.write(pickle.dumps(results_list))
         write_pipe.close()
 
-
-    def find_confidence_value_for_model(self, \
-                                        model, \
-                                        data, \
-                                        model_normal, \
-                                        conf_level, \
-                                        mult_factor, \
-                                        tolerance = 0.001):
-    
-        # Error check
-        import math
-        if conf_level < 0:
-            print "Error, CL must be greater than 0"
-            return None
-    
-        # First ML fit, let everything float
-        model_normal.setConstant(False)
-        model_normal.setVal(1)
-        result = model.fitTo(data, \
-                             ROOT.RooFit.Save(True),\
-                             ROOT.RooFit.PrintLevel(self.print_level),\
-                             ROOT.RooFit.Verbose(self.verbose),\
-                             ROOT.RooFit.Hesse(False),\
-                             ROOT.RooFit.Minos(False))
-    
-        # Check fit status
-        if result.status() != 0: 
-            print "Possible error in status"
-            result.IsA().Destructor(result)
-            return self.retry_error 
-    
-        minimized_value = model_normal.getVal()
-        orig_Nll = -result.minNll()
-        new_minNll = orig_Nll 
-    
-        # IMPORTANT
-        # Sometimes, ROOT and python don't play well
-        # together wrt memory handling.  ROOT expects
-        # the "result" to be owned by the caller of the 
-        # function, but python doesn't clean it up
-        # automatically.  This is a problem since this
-        # function performs *a lot* of fits.  You will
-        # take down the machine if you do not clean them up,
-        # I almost took down Athena.  -mgm-
-        # Manually cleanning up
-        result.IsA().Destructor(result)
-    
-        # now perform a search for the CL specified by the input 
-        model_normal.setConstant(True)
-        step_size = model_normal.getError()
-        model_normal.setVal(model_normal.getVal()+step_size)
-        number_of_tries = 0
-    
-        number_of_steps = 0
-        while not self.exit_manager.is_exit_requested():
-            result = model.fitTo(data, \
-                                       ROOT.RooFit.Save(True),\
-                                       ROOT.RooFit.PrintLevel(self.print_level),\
-                                       ROOT.RooFit.Verbose(self.verbose),\
-                                       ROOT.RooFit.Hesse(False),\
-                                       ROOT.RooFit.Minos(False))#,\
-        
-            # Check fit status
-            if result.status() != 0: 
-                print "Possible error in status"
-                result.IsA().Destructor(result)
-                return self.retry_error 
-    
-            
-            distance_traveled = -result.minNll() - new_minNll
-            new_minNll = -result.minNll()
-            distance_to_go = orig_Nll - new_minNll - conf_level
-            # IMPORTANT (see note above)
-            # Manually cleanning up
-            result.IsA().Destructor(result)
-    
-            # Check results
-            diff = orig_Nll - new_minNll - conf_level
-            if math.fabs(distance_to_go) < tolerance: 
-                # We've reached converegence within tolerance, get out
-                break
-            step_size *= distance_to_go/distance_traveled 
-            model_normal.setVal(model_normal.getVal() + step_size)
-            number_of_steps += 1
-            # Trying to avoid getting stuck in a loop.
-            if number_of_steps > 200: return self.retry_error
-           
-        # We're done, return results
-        if self.exit_manager.is_exit_requested(): return None
-        return {'model_amplitude' : model_normal.getVal(), \
-                'cross_section' : model_normal.getVal()*mult_factor,\
-                'orig_min_negloglikelihood' : orig_Nll,\
-                'final_min_negloglikelihood' : new_minNll}
-     
-    def scan_confidence_value_space_for_model(self, model, data_model, \
-                                              model_normal, mult_factor,\
-                                              variables, number_of_events,\
-                                              number_iterations, cl):
-    
-        list_of_values = []
-        i = 0
-        confidence_value = ROOT.TMath.ChisquareQuantile(cl, 1) 
-        while i < number_iterations:
-            #print "Process %s: Iteration (%i) of (%i)" % (os.getpid(), i+1, number_iterations)
-            # Generate the data, use Extended flag
-            # because the number_of_events is just
-            # an expected number.
-            model_normal.setVal(0)
-            data_set_func = data_model.generate(\
-                variables,\
-                number_of_events, \
-                ROOT.RooFit.Extended(True))
-    
-            if not data_set_func:
-                print "Background entries are much too low, need to estimate with FC or Rolke."
-                break
-            # Perform the fit and find the limits
-            get_val = self.find_confidence_value_for_model(
-                model, \
-                data_set_func, \
-                model_normal, \
-                confidence_value/2,\
-                mult_factor) 
-    
-            if not get_val: 
-                # There was an error somewhere downstream
-                # or an interrupt was signalled
-                # Get out
-                break
-            elif get_val == self.retry_error: 
-                # Calling function requested a retry
-                continue
-    
-            # Store the results
-            list_of_values.append(get_val)
-            i += 1
-    
-            if self.show_plots:
-                var_iter = variables.createIterator()
-                while 1:
-                    var_obj = var_iter.Next()
-                    if not var_obj: break
-                    aframe = var_obj.frame()
-                    data_set_func.plotOn(aframe)
-                    model.plotOn(aframe)
-                    aframe.Draw()
-                    self.c1.Update()
-                    raw_input("Hit Enter to continue")
-                    
- 
-            # ROOT doesn't play nicely with python always, 
-            # so we have to delete by hand
-            data_set_func.IsA().Destructor(data_set_func)
-    
-        return list_of_values
 
 class OscillationSignalDetection(WIMPModel):
     def get_requested_values(cls):
@@ -347,6 +204,9 @@ class OscillationSignalDetection(WIMPModel):
             energy_max=self.energy_max,\
             mass_of_wimp=0)
  
+        self.calculation_class = \
+            osc.OscillationSensitivityCalculation(self.exit_manager)
+
         self.variables = ROOT.RooArgSet()
         self.variables.add(self.wimpClass.get_time())
 
@@ -397,68 +257,4 @@ class OscillationSignalDetection(WIMPModel):
         self.data_set_model = self.background_model
         self.fitting_model = self.model_extend 
 
-    def find_confidence_value_for_model(self, \
-                                        model, \
-                                        data, \
-                                        model_normal, \
-                                        conf_level, \
-                                        mult_factor, \
-                                        tolerance = 0.001):
-    
-        # First ML fit, let everything float
-        if self.exit_manager.is_exit_requested(): return None
-        model_normal.setConstant(False)
-        model_normal.setVal(1)
-        result = model.fitTo(data,\
-                             ROOT.RooFit.Save(True),\
-                             ROOT.RooFit.PrintLevel(self.print_level),\
-                             ROOT.RooFit.Verbose(self.verbose),\
-                             ROOT.RooFit.Hesse(False),\
-                             ROOT.RooFit.Minos(False))#,\
-    
-        # Check fit status
-        if result.status() != 0: 
-            print "Possible error in status"
-            result.IsA().Destructor(result)
-            return self.retry_error 
-    
-        minimized_value = model_normal.getVal()
-        orig_Nll = -result.minNll()
-    
-        # IMPORTANT
-        # Sometimes, ROOT and python don't play well
-        # together wrt memory handling.  ROOT expects
-        # the "result" to be owned by the caller of the 
-        # function, but python doesn't clean it up
-        # automatically.  This is a problem since this
-        # function performs *a lot* of fits.  You will
-        # take down the machine if you do not clean them up,
-        # I almost took down Athena.  -mgm-
-        # Manually cleanning up
-        result.IsA().Destructor(result)
-    
-        model_normal.setConstant(True)
-        model_normal.setVal(0)
-        result = model.fitTo(data, \
-                             ROOT.RooFit.Save(True),\
-                             ROOT.RooFit.PrintLevel(self.print_level),\
-                             ROOT.RooFit.Verbose(self.verbose),\
-                             ROOT.RooFit.Hesse(False),\
-                             ROOT.RooFit.Minos(False))
-        
-        # Check fit status
-        if result.status() != 0: 
-            print "Possible error in status"
-            result.IsA().Destructor(result)
-            return self.retry_error 
-    
-        new_minNll = -result.minNll()
-        # Manually cleanning up
-        result.IsA().Destructor(result)
-    
-        # We're done, return results
-        return { 'best_fit_model' : minimized_value, \
-                 'orig_min_negloglikelihood' : orig_Nll, \
-                 'final_min_negloglikelihood' : new_minNll } 
- 
 
