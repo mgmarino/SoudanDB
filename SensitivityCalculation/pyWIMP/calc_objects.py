@@ -3,7 +3,7 @@
 # used for calculation of sensitivities
 #
 import ROOT
-import Calculation.SensitivityCalculation as sc
+import Calculation.ExclusionCalculation as ec
 import Calculation.OscillationSensitivityCalculation as osc
 
 class WIMPModel:
@@ -71,7 +71,7 @@ class WIMPModel:
             constant_quenching=(not self.variable_quenching))
 
         self.calculation_class = \
-            sc.SensitivityCalculation(self.exit_manager)
+            ec.ExclusionCalculation(self.exit_manager)
  
         self.variables = ROOT.RooArgSet()
         if self.constant_time:
