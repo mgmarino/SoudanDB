@@ -7,7 +7,20 @@ class BaseCalculation:
 
     def is_exit_requested(self):
         if not self.exit_manager: return False
-        return exit_manager.is_exit_requested()
+        return self.exit_manager.is_exit_requested()
+
+    def find_confidence_value_for_model(self, \
+                                        model, \
+                                        data, \
+                                        model_amplitude, \
+                                        conf_level, \
+                                        mult_factor, \
+                                        print_level = -1, \
+                                        verbose = False, \
+                                        tolerance = 0.001):
+ 
+        print "Base Class: BaseCalculation being called."
+        return None
 
     def scan_confidence_value_space_for_model(self, \
                                               model, \

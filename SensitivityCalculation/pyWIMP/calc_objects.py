@@ -62,28 +62,34 @@ class WIMPModel:
     def initialize(self):
 
         if self.is_initialized: return
-        from pyWIMP.DMModels.wimp_model import AllWIMPModels
-        self.wimpClass = AllWIMPModels(time_beginning=0, \
-            time_in_years=self.total_time, \
-            energy_threshold=self.threshold, \
-            energy_max=self.energy_max,\
-            mass_of_wimp=self.wimp_mass,
+        from pyWIMP.DMModels.wimp_model import WIMPModel
+        from pyWIMP.DMModels.base_model import BaseVariables
+        from pyWIMP.DMModels.flat_model import FlatModel
+        self.basevars = BaseVariables(time_beginning=0,\
+            time_in_years=self.total_time,\
+            energy_threshold=self.threshold,\
+            energy_max=self.energy_max)
+
+        self.wimpClass = WIMPModel(self.basevars,\
+            mass_of_wimp=self.wimp_mass,\
             constant_quenching=(not self.variable_quenching))
+
+        self.flatClass = FlatModel(self.basevars)
 
         self.calculation_class = \
             ec.ExclusionCalculation(self.exit_manager)
  
         self.variables = ROOT.RooArgSet()
         if self.constant_time:
-            self.wimpClass.get_time().setVal(0)
-            self.wimpClass.get_time().setConstant(True)
+            self.basevars.get_time().setVal(0)
+            self.basevars.get_time().setConstant(True)
         else:
-            self.variables.add(self.wimpClass.get_time())
+            self.variables.add(self.basevars.get_time())
         if not self.constant_energy:
-            self.variables.add(self.wimpClass.get_energy())
+            self.variables.add(self.basevars.get_energy())
 
         # This is where we define our models
-        self.background_model =  self.wimpClass.get_flat_model()
+        self.background_model =  self.flatClass.get_flat_model()
         self.model = self.wimpClass.get_WIMP_model_with_escape_vel(self.wimp_mass)
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
@@ -196,26 +202,31 @@ class OscillationSignalDetection(WIMPModel):
     def initialize(self):
 
         if self.is_initialized: return
-        from pyWIMP.DMModels.wimp_model import AllWIMPModels
-        self.wimpClass = AllWIMPModels(\
-            time_beginning=0, \
-            time_in_years=self.total_time, \
-            energy_threshold=self.threshold, \
-            energy_max=self.energy_max,\
-            mass_of_wimp=0)
- 
+        from pyWIMP.DMModels.base_model import BaseVariables
+        from pyWIMP.DMModels.flat_model import FlatModel
+        from pyWIMP.DMModels.oscillation_model import OscillationModel
+        self.basevars = BaseVariables(time_beginning=0,\
+            time_in_years=self.total_time,\
+            energy_threshold=self.threshold,\
+            energy_max=self.energy_max)
+
+        self.oscClass = OscillationModel(self.basevars)
+
+        self.flatClass = FlatModel(self.basevars)
+
+
         self.calculation_class = \
             osc.OscillationSensitivityCalculation(self.exit_manager)
 
         self.variables = ROOT.RooArgSet()
-        self.variables.add(self.wimpClass.get_time())
+        self.variables.add(self.basevars.get_time())
 
-        self.wimpClass.get_energy().setVal(0)
-        self.wimpClass.get_energy().setConstant(True)
+        self.basevars.get_energy().setVal(0)
+        self.basevars.get_energy().setConstant(True)
 
         # This is where we define our models
-        self.background =  self.wimpClass.get_flat_model()
-        self.model = self.wimpClass.get_simple_oscillation_model()
+        self.background =  self.flatClass.get_flat_model()
+        self.model = self.oscClass.get_oscillation_model()
         self.norm = 1 
         self.is_initialized = True
 

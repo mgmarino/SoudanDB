@@ -1,21 +1,17 @@
 import ROOT
+from base_model import BaseModel
 
-class AllWIMPModels:
+class WIMPModel(BaseModel):
     def __init__(self, \
-                 time_beginning=0, \
-                 time_in_years=5, \
-                 energy_threshold=0, \
-                 energy_max=20,\
+                 basevars, \
                  mass_of_wimp=20, \
                  kilograms=1,\
                  constant_quenching=True):
         # Normally, we don't want to do this, but this keeps 
         # it from importing this module until the last moment.
+        BaseModel.__init__(self, basevars)
         import pyWIMP.WIMPPdfs as pdfs  
-        self.time = ROOT.RooRealVar("time", "Time",time_beginning,\
-                    time_in_years, "years") 
-        self.ee_energy = ROOT.RooRealVar("ee_energy", "ee_energy", \
-                         energy_threshold, energy_max, "keV")
+
         self.flat_normal = ROOT.RooRealVar("flat_normal", "flat_normal", \
                          0, 10000 )
 
@@ -25,21 +21,18 @@ class AllWIMPModels:
             self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
                               "1./@0", ROOT.RooArgList(self.quenching))
             self.energy = ROOT.RooFormulaVar("energy", "Energy", \
-                          "@0/@1", ROOT.RooArgList(self.ee_energy, \
+                          "@0/@1", ROOT.RooArgList(basevars.get_energy(), \
                           self.quenching))
         else:
             self.energy = ROOT.RooFormulaVar("energy", "Energy", \
                           "TMath::Power(@0/0.14,0.840336)", \
-                          ROOT.RooArgList(self.ee_energy))
+                          ROOT.RooArgList(basevars.get_energy()))
             self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
-                              "4.38523*TMath::Power(@0, -0.1596638655)", ROOT.RooArgList(self.ee_energy))
+                              "4.38523*TMath::Power(@0, -0.1596638655)", \
+                              ROOT.RooArgList(basevars.get_energy()))
 
-        self.threshold = ROOT.RooRealVar("threshold", "threshold", \
-                         energy_threshold)
         self.kilograms = ROOT.RooRealVar("kilograms", "kilograms", \
                          kilograms)
-        self.energy_max = ROOT.RooRealVar("energy_max", "energy_max", \
-                          energy_max)
 
 
         self.v_sub_E_sub_0 = ROOT.RooRealVar("v_sub_E_sub_0", \
@@ -124,7 +117,7 @@ class AllWIMPModels:
 
         self.v_sub_E = pdfs.MGMWimpTimeFunction("v_sub_E", \
                   "Velocity of the Earth",\
-                  self.v_sub_E_sub_0, self.v_sub_E_sub_1, self.time) 
+                  self.v_sub_E_sub_0, self.v_sub_E_sub_1, basevars.get_time()) 
         self.v_sub_E.setUnit( self.v_sub_E_sub_0.getUnit() )
 
         self.v_sub_min = ROOT.RooFormulaVar("v_sub_min", \
@@ -172,36 +165,19 @@ class AllWIMPModels:
                          self.E_sub_0, self.r, \
                          self.v_sub_esc)
 
-        # Flat pdf
-        self.time_pdf = ROOT.RooPolynomial("time_pdf", "time_pdf", self.time)
-        self.energy_pdf = ROOT.RooPolynomial("energy_pdf", "energy_pdf", self.energy)
-        self.flat_pdf = ROOT.RooProdPdf("time_and_energy_pdf", \
-                    "time_and_energy_pdf", \
-                    self.time_pdf, self.energy_pdf)
  
         self.simple_model = ROOT.RooGenericPdf("simple model", "Lewin/Smith simple model",\
                          "0.751*@3/(@1*@2)*exp(-0.561*@0/(@1*@2))", \
                          ROOT.RooArgList(self.energy, \
                          self.E_sub_0, self.r,self.R_sub_0))
 
-        self.simple_oscillation_model = ROOT.RooGenericPdf(\
-                                  "simple_osc", \
-                                  "Simple Oscillation Model",\
-                                  "1+sin(TMath::TwoPi()*@0)",\
-                                  ROOT.RooArgList(self.time))
-                                  
+                                 
        
     def get_simple_model(self):
         return self.simple_model
 
     def get_velocity_earth(self):
         return self.v_sub_E
-
-    def get_energy(self):
-        return self.ee_energy
-
-    def get_time(self):
-        return self.time
 
     def get_normalization(self):
         return self.normalization
@@ -223,11 +199,7 @@ class AllWIMPModels:
     def get_WIMP_model_with_escape_vel_no_ff(self, mass_of_wimp=None):
         if mass_of_wimp: self.mass_of_wimp.setVal(mass_of_wimp)
         return self.final_function_with_escape_no_ff
-    def get_flat_model(self):
-        return self.flat_pdf
 
-    def get_simple_oscillation_model(self):
-        return self.simple_oscillation_model
 
 
 
