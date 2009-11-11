@@ -1,0 +1,10 @@
+pyWIMP distribution:
+
+created by Michael Marino 2009
+
+Installation:
+
+1.  Run ./configure && make
+2.  Make sure that python can find the base of the path, 
+    that is, set PYTHONPATH to include this directory.
+    This allows python to find this package.
