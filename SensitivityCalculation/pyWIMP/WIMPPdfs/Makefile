@@ -1,5 +1,5 @@
-include $(MGDODIR)/buildTools/config.mk
+include ../../buildTools/config.mk
 
-include $(MGDODIR)/buildTools/BasicROOTMakefile
+include ../../buildTools/BasicROOTMakefile
 LIBFLAGS += -lRooFit -lRooFitCore -lMinuit -lFoam
 

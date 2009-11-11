@@ -1,0 +1,78 @@
+# This Makefile needs the following variables defined if the defaults are
+# not suitable (see code)
+#  SOURCES -> Source files needed for compilation and auto-generation of deps
+#  OBJECTS -> .o files needed
+#  ROOTDICTHEADERS -> Headers needed to generate the root dictionary
+#
+# Optionally, add or modify the following variables
+#  INCLUDEFLAGS
+#  LIBFLAGS
+
+
+packageName := $(notdir $(shell pwd))
+SHLIB := libMGDO$(packageName).$(SOSUFFIX)
+ARCHIVE := libMGDO$(packageName).a
+ROOTSOSUFFIX := so
+ROOTDICTCCNAME := MGDO$(packageName)DICT.C
+ROOTDICTHHNAME := MGDO$(packageName)DICT.h
+ROOTDICTOBJECT := $(ROOTDICTCCNAME:.C=.o)
+INCLUDEFLAGS += $(ROOT_INCLUDE_FLAGS)
+LIBFLAGS += $(ROOT_LIB_FLAGS) 
+
+SOURCES ?= $(wildcard *.cc)
+OBJECTS ?= $(SOURCES:.cc=.o)
+ROOTDICTHEADERS ?= $(shell grep -l ClassDef $(wildcard *.hh) | xargs) 
+
+.PHONY: all depend lib clean static shared
+
+all: lib
+
+lib: static shared
+
+shared: ../lib/$(SHLIB)
+
+static: ../lib/$(ARCHIVE)
+
+.depend depend: $(ROOTDICTCCNAME)
+	@echo Checking dependencies...
+	g++ -M $(CXXFLAGS) $(INCLUDEFLAGS) $(SOURCES) $(ROOTDICTCCNAME) > .depend
+
+%.o: %.cc 
+	$(CXX) -c $(CXXFLAGS) $(INCLUDEFLAGS) $< 
+
+%.o: %.C
+	$(CXX) -c $(CXXFLAGS) $(INCLUDEFLAGS) $< 
+
+$(ROOTDICTCCNAME): $(ROOTDICTHEADERS) LinkDef.h
+	@echo Rootifying files...
+	@rm -f $(ROOTDICTCCNAME) $(ROOTDICTHHNAME) 
+	$(ROOTCINT) $(ROOTDICTCCNAME) -c -p $(CXXFLAGS) $(ROOTDICTINCLUDE) $(INCLUDEFLAGS) $(ROOTDICTHEADERS) LinkDef.h
+ 
+$(SHLIB): $(OBJECTS) $(ROOTDICTOBJECT)
+	$(SOMAKER) $(SOFLAGS) -o $(SHLIB) $(OBJECTS) $(ROOTDICTOBJECT) $(LIBFLAGS)
+
+../lib/$(SHLIB): $(SHLIB)
+	@echo Setting up library links...
+	@mkdir -p ../lib
+	@cd ../lib; ln -sf ../$(packageName)/$(SHLIB); if test ! -e $(basename $(SHLIB)).$(ROOTSOSUFFIX); then \
+	ln -s $(SHLIB) $(basename $(SHLIB)).$(ROOTSOSUFFIX); fi 
+
+$(ARCHIVE): $(OBJECTS) $(ROOTDICTOBJECT)
+	@echo $(OBJECTS)
+	$(AREXEC) $(ARFLAGS) $(ARCHIVE) $(OBJECTS) $(ROOTDICTOBJECT)
+
+../lib/$(ARCHIVE): $(ARCHIVE)
+	@echo Setting up library links...
+	@mkdir -p ../lib
+	@cd ../lib; ln -sf ../$(packageName)/$(ARCHIVE) 
+
+clean:
+	@rm -f $(SHLIB) $(ARCHIVE) $(ROOTDICTCCNAME) $(ROOTDICTHHNAME) *.o *~ .depend
+	@rm -f ../lib/$(SHLIB)
+	@rm -f ../lib/$(ARCHIVE)
+	@rm -f $(TRANSFORMSCC) $(TRANSFORMSHH)
+
+ifneq ($(MAKECMDGOALS),clean)
+-include .depend
+endif
+
