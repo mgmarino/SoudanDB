@@ -12,5 +12,5 @@ class OscillationModel(BaseModel):
                                   "1+sin(TMath::TwoPi()*@0)",\
                                   ROOT.RooArgList(basevars.get_time()))
  
-    def get_oscillation_model(self):
+    def get_model(self):
         return self.simple_oscillation_model

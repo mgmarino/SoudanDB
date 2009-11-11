@@ -200,6 +200,7 @@ class WIMPModel(BaseModel):
         if mass_of_wimp: self.mass_of_wimp.setVal(mass_of_wimp)
         return self.final_function_with_escape_no_ff
 
-
+    def get_model(self):
+        return self.final_function_with_escape
 
 

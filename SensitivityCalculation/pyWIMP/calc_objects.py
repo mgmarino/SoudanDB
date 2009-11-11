@@ -89,8 +89,8 @@ class WIMPModel:
             self.variables.add(self.basevars.get_energy())
 
         # This is where we define our models
-        self.background_model =  self.flatClass.get_flat_model()
-        self.model = self.wimpClass.get_WIMP_model_with_escape_vel(self.wimp_mass)
+        self.background_model =  self.flatClass.get_model()
+        self.model = self.wimpClass.get_model()
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
 
@@ -225,8 +225,8 @@ class OscillationSignalDetection(WIMPModel):
         self.basevars.get_energy().setConstant(True)
 
         # This is where we define our models
-        self.background =  self.flatClass.get_flat_model()
-        self.model = self.oscClass.get_oscillation_model()
+        self.background =  self.flatClass.get_model()
+        self.model = self.oscClass.get_model()
         self.norm = 1 
         self.is_initialized = True
 

@@ -18,5 +18,5 @@ class FlatModel(BaseModel):
                                         self.time_pdf, \
                                         self.energy_pdf)
 
-    def get_flat_model(self):
+    def get_model(self):
         return self.flat_pdf
