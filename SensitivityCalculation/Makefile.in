@@ -1,0 +1,17 @@
+SRCDIRS =  @DIRECTORIES@ 
+
+.PHONY: all static clean 
+
+all: shared static
+
+shared: 
+	@for i in $(SRCDIRS); do (echo Entering directory $$i; $(MAKE) -C $$i shared) || exit $$?; done
+
+static: 
+	@for i in $(SRCDIRS); do (echo Entering directory $$i; $(MAKE) -C $$i static) || exit $$?; done
+
+clean:
+	@for i in $(SRCDIRS); do $(MAKE) -C $$i clean || exit $$?; done
+	@rm -rf lib
+
+
