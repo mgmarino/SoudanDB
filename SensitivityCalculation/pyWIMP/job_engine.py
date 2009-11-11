@@ -4,7 +4,7 @@ import os
 import optparse
 import types
 import inspect
-import pyWIMP.calc_objects as co
+import pyWIMP.Calculation.calc_objects as co
 from pyWIMP.utilities import utilities
 import array
 import signal

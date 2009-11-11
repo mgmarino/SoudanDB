@@ -3,8 +3,8 @@
 # used for calculation of sensitivities
 #
 import ROOT
-import Calculation.ExclusionCalculation as ec
-import Calculation.OscillationSensitivityCalculation as osc
+import ExclusionCalculation as ec
+import OscillationSensitivityCalculation as osc
 
 class WIMPModel:
     """
