@@ -10,17 +10,22 @@ class GammaLineModel(BaseModel):
         BaseModel.__init__(self, basevars)
 
 
+
+        name = str(mean.getVal())
+        if lifetime:
+            name += "_lt_"
+            name += str(lifetime.getVal()) 
        
         if not lifetime:
             # Choose infinite lifetime
-            self.local_lifetime = ROOT.RooRealVar("local_lifetime", \
-                                                  "local_lifetime", \
+            self.local_lifetime = ROOT.RooRealVar("local_lifetime_%s" % name, \
+                                                  "local_lifetime_%s" % name, \
                                                   0)
         else:
             self.local_lifetime = ROOT.RooFormulaVar(
-                                    "local_lifetime", \
-                                    "local_lifetime", \
-                                    "-1./@0", \
+                                    "local_lifetime_%s" % name, \
+                                    "local_lifetime_%s" % name, \
+                                    "-0.693147181/@0", \
                                     ROOT.RooArgList(lifetime))
             
 	    # Gamma pdf
@@ -62,8 +67,8 @@ class GammaLineFactory:
             lifetime = ROOT.RooRealVar("lifetime_%s" % name,\
                                        "lifetime", \
                                        lifetime_value, \
-                                       0.9*lifetime_value, \
-                                       1.1*lifetime_value)
+                                       0.*lifetime_value, \
+                                       1.2*lifetime_value)
         gamma_line = GammaLineModel(basevars, mean, sigma, lifetime)
         cls.created[mean_value] = (gamma_line, mean, sigma, lifetime)
         return cls.created[mean_value][0]
