@@ -1,4 +1,4 @@
-from management.soudan_database import SoudanServer, CutDocumentClass  
+from ..management.soudan_database import SoudanServer, CutDocumentClass  
 class MGCut(object):
     """
     Base class which is inserted into the database.  A later daemon will go
