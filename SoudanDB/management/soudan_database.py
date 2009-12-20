@@ -2,119 +2,116 @@ import couchdb
 from couchdb import schema
 from datetime import datetime
 from dateutil import tz
-import  views.view_all_accepted_runs as view_all_accepted_runs
-import  views.view_all_rejected_runs as view_all_rejected_runs
+from ..views import view_all_accepted_runs 
+from ..views import view_all_rejected_runs 
 import ROOT
 import glob
 import re
+import pickle
+import types
+from ..utilities import utilities
+import os
+import sys
+from . import ServerSingleton, CurrentDBSingleton
 
-# Constants to access database
-#majorana_db_server = 'http://majorana.npl.washington.edu:5984'
+def SoudanServer():
+    return ServerSingleton.get_server()
+
+def get_current_db_module():
+    return CurrentDBSingleton.get_current_db_module()
+
 majorana_db_server = 'http://127.0.0.1:5984'
 majorana_db_username = 'ewi'
 majorana_db_password = 'darkma11er'
-soudan_db_name = 'soudan_db'
-soudan_cuts_db_name = 'soudan_cuts_db'
-raw_data_file_directory='/mnt/auto/data3EWI/SoudanData'
-raw_data_file_stem='LongRunCounting'
-orcaroot_data_file_directory='/mnt/raid/data/Soudan/Data'
-orcaroot_data_file_stem='greta_MarkIV_run'
-output_data_file_directory='%s/tmp' % orcaroot_data_file_directory
-reduced_size_data_file_high_energy_directory = '%s/high_energy' %\
-  output_data_file_directory
-reduced_size_data_file_low_energy_directory = '%s/low_energy' % \
-  output_data_file_directory
-reduced_size_data_file_pulser_directory = '%s/pulser' % \
-  output_data_file_directory
-
-
-def update_database():
-    #First get all the files together 
-    def get_run_number_from_orcaroot_data_file(datafile_name):
-        search_pattern = re.compile(".*?%s([1-9][0-9]*)" % orcaroot_data_file_stem)
-        return int(search_pattern.search(datafile_name).group(1))
-
-    ROOT.gROOT.SetBatch()
-    temp = glob.glob("%s/*%s*" % \
-      (orcaroot_data_file_directory, orcaroot_data_file_stem) ) 
-    number_list = []
-    for file in temp:
-        number_list.append(get_run_number_from_orcaroot_data_file(file))
-
-    number_list.sort()
-    soudan_db = SoudanServer()
-    for num in number_list:
-        soudan_db.check_and_update_run(num)
 
 class RunTimeDict(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          run_seconds = schema.FloatField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          run_seconds = schema.FloatField(),
           run_seconds_error = schema.FloatField()))
 
 class BaselineDict(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          average_fit_constant=schema.FloatField(),\
-          average_fit_rms=schema.FloatField(),\
-          chi_square=schema.FloatField(),\
-          ndf=schema.FloatField(),\
-          first_ten_percent_fit_constant=schema.FloatField(),\
-          first_ten_percent_fit_constant_rms=schema.FloatField(),\
-          last_ten_percent_fit_constant=schema.FloatField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          average_fit_constant=schema.FloatField(),
+          average_fit_rms=schema.FloatField(),
+          chi_square=schema.FloatField(),
+          ndf=schema.FloatField(),
+          first_ten_percent_fit_constant=schema.FloatField(),
+          first_ten_percent_fit_constant_rms=schema.FloatField(),
+          last_ten_percent_fit_constant=schema.FloatField(),
           last_ten_percent_fit_constant_rms=schema.FloatField()))
 
 class CutsDictClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          description_of_cut=schema.TextField(),\
-          string_of_cut=schema.TextField(),\
-          passes_cut=schema.BooleanField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          description_of_cut=schema.TextField(),
+          string_of_cut=schema.TextField(),
+          passes_cut=schema.BooleanField(),
           version_of_cut=schema.TextField() ))
 
 class TriggerDataClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          scaling = schema.FloatField(),\
-          scaling_err = schema.FloatField(),\
-          offset = schema.FloatField(),\
-          offset_err = schema.FloatField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          scaling = schema.FloatField(),
+          scaling_err = schema.FloatField(),
+          offset = schema.FloatField(),
+          offset_err = schema.FloatField(),
           erfc_function = schema.TextField() ))
 
 class PulserDataClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          sigma = schema.FloatField(),\
-          sigma_err = schema.FloatField(),\
-          mean = schema.FloatField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          sigma = schema.FloatField(),
+          sigma_err = schema.FloatField(),
+          mean = schema.FloatField(),
           mean_err = schema.FloatField()  ))
 
 
 class QADataClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          qa_check_process_has_been_run = schema.BooleanField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          qa_check_process_has_been_run = schema.BooleanField(),
           qa_accept_run = schema.BooleanField()))
 
 class NoiseCheckClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          events_in_region_point6_to_10_keV=schema.IntegerField(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          events_in_region_point6_to_10_keV=schema.IntegerField(),
           events_in_region_10_to_70_keV=schema.IntegerField() ))
 
 class DataFileClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          pfn = schema.TextField(),\
-          lfn = schema.TextField(),\
-          md5hash = schema.TextField() ))
+        schema.DictField.__init__(self, schema.Schema.build(
+          pfn = schema.TextField(),
+          lfn = schema.TextField(),
+          md5hash = schema.TextField(),
+          last_mod_time = MGDateTimeFieldClass()  ))
 
 class AllReducedDataFilesClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
-          pulser = DataFileClass(),\
-          low_energy = DataFileClass(),\
+        schema.DictField.__init__(self, schema.Schema.build(
+          pulser = DataFileClass(),
+          low_energy = DataFileClass(),
           high_energy = DataFileClass() ))
+
+class MGPickleFieldClass(schema.Field):
+    """Schema for pickled fields."""
+    def _to_python(self, value):
+        # Be smart, try to return a function if includes 'def' 
+        temp = pickle.loads(value)
+        if type(temp) is types.StringType: 
+            match_it = re.search('def .*', temp, re.DOTALL) 
+            if match_it:
+                try:
+                    code_obj = compile(temp, '<string>', 'exec') 
+                    return types.FunctionType(code_obj.co_consts[0], globals())
+                except (SyntaxError,TypeError): 
+                    pass
+        return temp
+
+    def _to_json(self, value):
+        return unicode(pickle.dumps(value,0))
 
 class MGDateTimeFieldClass(schema.DateTimeField):
     """
@@ -158,6 +155,9 @@ class MGDocumentClass(schema.Document):
         new_doc._set_id(old_doc._get_id())
         return new_doc
 
+class PickleDocumentClass(MGDocumentClass):
+    pickle = MGPickleFieldClass() 
+
 class CutDocumentClass(MGDocumentClass):
     string_of_cut = schema.TextField()
     verbose_description_of_cut = schema.TextField()
@@ -174,136 +174,44 @@ class CutDocumentClass(MGDocumentClass):
         return bool_of_cut
  
 
-class RunDocumentClass(MGDocumentClass):
-    raw_data_file_tier_0 = DataFileClass() 
-    root_data_file_tier_1 = DataFileClass() 
-    output_data_file_tier_2 =  DataFileClass()
-    output_data_file_tier_3 = AllReducedDataFilesClass()
-    baseline_dict = BaselineDict()
-    livetime = RunTimeDict() 
-    modification_time = schema.DateTimeField()
-    quality_assurance = QADataClass() 
-    trigger_efficiency = TriggerDataClass()
-    noise_check = NoiseCheckClass()
-    all_cuts = schema.ListField(CutsDictClass())
-    time_of_start_of_run = MGDateTimeFieldClass()
-    number_of_entries_in_tier1_root_tree = schema.LongField()
-    pulser_data = PulserDataClass()
-
-    def get_most_recent_modification_time(self):
-        import os.path, datetime
-        def check_dict_for_pfn(adict, list):
-            try:
-                dict_items = adict.items()
-                for key, value in dict_items:
-                    if key == 'pfn': 
-                        list.append(value)
-                    else:
-                        check_dict_for_pfn(value, list)
-            except AttributeError:
-                pass
-        files_to_check = []
-        check_dict_for_pfn(self, files_to_check)
-        most_recent_time = 0
-        for file in files_to_check:
-            if os.path.getmtime(file) > most_recent_time:
-                most_recent_time = os.path.getmtime(file)
- 
-        return datetime.datetime.fromtimestamp(most_recent_time)
-
-    @classmethod
-    def build_runDocumentClass(cls, run_number, return_class=None):
-        import os.path
-
-        def get_hash_of_file(file, block_size=2**20):
-            import hashlib
-            md5 = hashlib.md5()
-            open_file = open(file, 'rb')
-            while True:
-                data = open_file.read(block_size)
-                if not data:
-                    break
-                md5.update(data)
-            open_file.close()
-            return md5.hexdigest()
-
-        def find_file_for_db(db_entry, directory, run_number, first_stem, second_stem=''): 
-            import glob
-            temp = glob.glob("%s/*%s%i%s" % \
-              (directory, first_stem, run_number, second_stem) ) 
-            if len(temp) != 1:
-                return None
-            db_entry.pfn = temp[0]
-            db_entry.md5hash = get_hash_of_file(temp[0])
-            db_entry.lfn = os.path.basename(temp[0])
-            return db_entry
- 
-        reduced_file_dir_list = []
-        reduced_file_dir_list.append(reduced_size_data_file_high_energy_directory)
-        reduced_file_dir_list.append(reduced_size_data_file_low_energy_directory)
-        reduced_file_dir_list.append(reduced_size_data_file_pulser_directory)
+class SoudanServerClass(couchdb.client.Server):
     
-        if not return_class:
-            return_class = RunDocumentClass()
-            return_class._set_id(str(run_number))
-
-        if not find_file_for_db(return_class.raw_data_file_tier_0, \
-                         raw_data_file_directory, run_number,\
-                         raw_data_file_stem): return None
-       
-        if not find_file_for_db(return_class.root_data_file_tier_1, \
-                         orcaroot_data_file_directory, run_number,\
-                         'run', '.root'): return None
-
-        if not find_file_for_db(return_class.output_data_file_tier_2, \
-                         output_data_file_directory, run_number,\
-                         'output', '.root'): return None
-    
-        for directory in reduced_file_dir_list:
-            type_of_directory = os.path.basename(directory)
-            if not hasattr(return_class.output_data_file_tier_3, \
-              type_of_directory):
-                print "Attribute: %s not found." % type_of_directory
-                continue
-            file_dictionary = return_class.output_data_file_tier_3.\
-              __getattribute__(type_of_directory)
-
-            if not find_file_for_db(file_dictionary, \
-                         directory, run_number,\
-                         'output', 'reduce*.root'):
-                return None
-            file_dictionary.lfn = "%s/%s" % (type_of_directory, \
-              os.path.basename(file_dictionary.pfn))
-
-        return_class.modification_time = return_class.get_most_recent_modification_time()
-        return_class.quality_assurance.qa_check_process_has_been_run = False
-        return_class.quality_assurance.qa_accept_run = False
-        return return_class
-   
- 
-class SoudanServer(couchdb.client.Server):
-    def __init__(self):
+    def __init__(self, db_name, cuts_db_name, run_doc_class, cut_doc_class=None):
         couchdb.client.Server.__init__(self, majorana_db_server)
         self.resource.http.add_credentials(majorana_db_username, majorana_db_password)
-        if soudan_db_name not in self:
-            self.soudan_db = self.create(soudan_db_name)
+        if db_name not in self:
+            self.soudan_db = self.create(db_name)
             print "Database created."
         else:
-            self.soudan_db = self[soudan_db_name]
+            self.soudan_db = self[db_name]
             print "Database found."
 
-        if soudan_cuts_db_name not in self:
-            self.soudan_cuts_db = self.create(soudan_cuts_db_name)
+        if cuts_db_name not in self:
+            self.soudan_cuts_db = self.create(cuts_db_name)
             print "Cuts database created."
         else:
-            self.soudan_cuts_db = self[soudan_cuts_db_name]
+            self.soudan_cuts_db = self[cuts_db_name]
             print "Cuts database found."
+        
+        if not cut_doc_class:
+            self.cut_doc_class = CutDocumentClass
+        else:
+            self.cut_doc_class = cut_doc_class
+        self.run_doc_class = run_doc_class
+        
    
     def get_database(self):
         return self.soudan_db
 
     def get_cuts_database(self):
         return self.soudan_cuts_db
+
+    def pickle_is_in_database(self, pickle):
+        # Searches for a pickle in the database
+        if self.run_is_in_database(pickle):
+            # This means it's a run document
+            return False
+        return (str(pickle) in self.get_database())
 
     def run_is_in_database(self, run_number):
         try:
@@ -315,21 +223,38 @@ class SoudanServer(couchdb.client.Server):
     def cut_is_in_database(self, cut):
         return (str(cut) in self.get_cuts_database())
 
+    def get_pickle(self, pickle):
+        if self.pickle_is_in_database(pickle): 
+            return PickleDocumentClass.load(self.get_database(), str(pickle))
+        return None
+
+    def insert_pickle(self, pickle_doc, pickle_name=None):
+        if pickle_name:
+            try:
+                temp = int(pickle_name)
+                print "%i is an integer, please choose a string" % pickle_name
+                return
+            except ValueError:
+                pickle_doc._set_id(str(pickle_name)) 
+                pass
+        pickle_doc.store(self.get_database())
+
     def get_cut(self, cut):
         if self.cut_is_in_database(cut): 
-            return CutDocumentClass.load(self.get_cuts_database(), str(cut))
-        else:
-            return None
+            return self.cut_doc_class.load(self.get_cuts_database(), str(cut))
+        return None
 
     def insert_cut(self, cut_doc):
         if cut_doc:
             cut_doc.store(self.get_cuts_database())
 
+    def get_doc(self, doc):
+        return self.get_run(doc)
+
     def get_run(self, run_number):
         if self.run_is_in_database(run_number): 
-            return RunDocumentClass.load(self.get_database(), str(run_number))
-        else:
-            return None
+            return self.run_doc_class.load(self.get_database(), str(run_number))
+        return None
 
     def delete_run(self, run_number):
         if self.run_is_in_database(run_number): 
@@ -355,13 +280,9 @@ class SoudanServer(couchdb.client.Server):
         """
         run_doc = self.get_run(run_number)
         if not run_doc:
-            run_doc = RunDocumentClass.build_runDocumentClass(run_number)
+            run_doc = self.run_doc_class.build_document(run_number)
             if run_doc:
-                print "Run %i is not in database, inserting..." % run_number
+                print "Run %i is not in database, inserting..." % int(run_number)
                 self.insert_rundoc(run_doc)
-        else:
-            if run_doc.modification_time < run_doc.get_most_recent_modification_time():
-                print "Run %i is modified, updating..." % run_number
-                run_doc = self.build_runDocumentClass(run_number, run_doc)
-                self.insert_rundoc(run_doc) 
-    
+
+

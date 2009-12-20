@@ -1,5 +1,19 @@
 import os
 
+def get_hash_of_file(file, block_size=2**20):
+    import hashlib
+    md5 = hashlib.md5()
+    open_file = open(file, 'rb')
+    while True:
+        data = open_file.read(block_size)
+        if not data:
+            break
+        md5.update(data)
+    open_file.close()
+    return md5.hexdigest()
+
+
+
 def detectCPUs():
  """
  Detects the number of CPUs on a system. Cribbed from pp.
