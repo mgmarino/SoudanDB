@@ -1,3 +1,4 @@
+from ..management.soudan_database import SoudanServer
 def generate_all_cuts_on_database(force_overwrite=False):
     server = SoudanServer()
    
@@ -31,6 +32,7 @@ def generate_all_cuts_on_database(force_overwrite=False):
                         dictionary['passes_cut'] = cut_doc.\
                           generate_cut_for_run_doc(run_doc)
                         dictionary['version_of_cut'] = cut_doc.rev
+                        dictionary['string_of_cut'] = cut_doc.string_of_cut
 
         # Now we update the cuts that haven't been done
         for id, cut_doc in cuts_dictionary.items():
@@ -43,6 +45,8 @@ def generate_all_cuts_on_database(force_overwrite=False):
             temp_dict['passes_cut'] = cut_doc.generate_cut_for_run_doc(run_doc)
             run_doc.all_cuts.append(temp_dict)
              
+        if not run_doc.quality_assurance.qa_check_process_has_been_run:
+            must_reinsert = True
         if must_reinsert:
             run_doc.quality_assurance.qa_check_process_has_been_run = True
             run_doc.quality_assurance.qa_accept_run = True
