@@ -6,6 +6,7 @@ from couchdb import schema
 import os
 import re
 import glob
+from views import view_all_accepted_runs
 
 # Constants to access database
 soudan_db_name = 'soudan_bege_gretina_db'
@@ -22,6 +23,10 @@ class BeGeGretinaDB(SoudanServerClass):
     def get_run_docs(self):
         temp_list = list(self.get_database())
         return temp_list
+
+    def get_accepted_runs(self):
+        view = view_all_accepted_runs.get_view_class()
+        return view(self.get_database())
 
 
 def update_database():
