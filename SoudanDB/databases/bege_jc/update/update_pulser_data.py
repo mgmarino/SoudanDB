@@ -1,4 +1,5 @@
-def update_pulser_data_for_rundoc(run_doc):
+from ..views import view_virgin_pulser_data
+def update_rundoc(run_doc):
     import ROOT
     # check to see if we need to update
     if len(run_doc.pulser_run_characteristics.chan_0.sigma) ==\
@@ -39,3 +40,6 @@ def update_pulser_data_for_rundoc(run_doc):
             current_chan.sigma_err.append(sigmaRV.getError())
 
     return (run_doc, True)
+
+def get_view():
+    return view_virgin_pulser_data.get_view_class()

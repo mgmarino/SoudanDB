@@ -1,4 +1,5 @@
-def update_number_of_entries_in_root_file_for_rundoc(run_doc):
+from ..views import view_virgin_number_of_entries_in_root_file
+def update_rundoc(run_doc):
     """
     Determine how many entries are in the main root file
     """
@@ -16,3 +17,5 @@ def update_number_of_entries_in_root_file_for_rundoc(run_doc):
       main_tree.GetEntries()
     return (run_doc, True)
 
+def get_view():
+    return view_virgin_number_of_entries_in_root_file.get_view_class()

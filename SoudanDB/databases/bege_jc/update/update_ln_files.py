@@ -3,9 +3,10 @@ import os
 import datetime
 import time
 import ROOT
+from ..views import view_virgin_LN_fills
 
 
-def update_all_files_in_ln_doc(rundoc):
+def update_rundoc(rundoc):
     """
     Returns whether or not the rundoc has been updated.
     This list is composed with tuples of the following:
@@ -89,3 +90,5 @@ def update_all_files_in_ln_doc(rundoc):
 
     return (rundoc, rundoc_was_modified)
 
+def get_view():
+    return view_virgin_LN_fills.get_view_class()

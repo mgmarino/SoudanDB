@@ -1,4 +1,5 @@
-def update_pulser_no_pulser_sets_for_rundoc(run_doc):
+from ..views import view_virgin_output_file
+def update_rundoc(run_doc):
     """
       Updates a rundoc with the sets of events during a pulser
       and those not during a pulser 
@@ -63,3 +64,5 @@ def update_pulser_no_pulser_sets_for_rundoc(run_doc):
 
     return (run_doc, True)
 
+def get_view():
+    return view_virgin_output_file.get_view_class()

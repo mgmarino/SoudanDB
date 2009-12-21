@@ -16,15 +16,31 @@ def update_calculations_on_database():
 
     # Which database are we using?
     # Grab all the modules from the update directory
+    module_list = []
     current_db_name = '%s.update' % get_current_db_module()
     update_module = my_import(current_db_name)
     for loader,name,ispkg in pkgutil.iter_modules([update_module.__path__[0]]):
         if ispkg: continue
         load = pkgutil.find_loader('%s.%s' % (current_db_name, name))
         mod = load.load_module("%s.%s" % (current_db_name,name))
+        module_list.append(mod)
         for aname in mod.__dict__.keys():
             if inspect.isfunction(getattr(mod, aname)):
                 function_list.append(getattr(mod, aname))
+
+    for amod in module_list: 
+        # Get the view to use
+        view = amod.get_view()
+        list_of_docs = view(server.get_database())
+        for id in list_of_docs:
+            run_doc = server.get_doc(id.id)
+            if not run_doc: continue
+            (run_doc, must_reinsert) = amod.update_rundoc(run_doc)
+            if must_reinsert:
+                print "Updating run number: %s" % run_doc.id
+                server.insert_rundoc(run_doc)
+
+    """ 
 
     for id in server.get_database():
         run_doc = server.get_doc(id)
@@ -42,6 +58,7 @@ def update_calculations_on_database():
         if must_reinsert:
             print "Updating run number: %s" % run_doc.id
             server.insert_rundoc(run_doc)
+    """
 
 if __name__ == '__main__':
     update_calculations_on_database()

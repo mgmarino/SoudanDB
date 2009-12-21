@@ -1,4 +1,6 @@
-def update_start_of_run_time_for_rundoc(run_doc):
+from ..views import view_virgin_start_of_run_time
+
+def update_rundoc(run_doc):
     """
       Updates a rundoc with the local time of the start 
       Can be used to popluate a RunTimeDict
@@ -16,3 +18,5 @@ def update_start_of_run_time_for_rundoc(run_doc):
     run_doc.local_time_of_start_of_run = datetime_obj
     return (run_doc, True)
 
+def get_view():
+    return view_virgin_start_of_run_time.get_view_class()

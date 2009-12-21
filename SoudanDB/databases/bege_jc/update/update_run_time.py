@@ -1,4 +1,5 @@
-def update_run_time_for_rundoc(run_doc):
+from ..views import view_virgin_runtime
+def update_rundoc(run_doc):
     """
       Updates a rundoc with the calculation of the livetime 
       and an error on that livetime (in seconds)
@@ -23,3 +24,5 @@ def update_run_time_for_rundoc(run_doc):
     run_doc.livetime = output_dictionary
     return (run_doc, True)
 
+def get_view():
+    return view_virgin_runtime.get_view_class()

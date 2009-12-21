@@ -1,4 +1,5 @@
-def update_run_settings_for_rundoc(run_doc):
+from ..views import view_virgin_settings_docs
+def update_rundoc(run_doc):
     """
       Updates a rundoc with the settings stored 
       in the settings file
@@ -17,3 +18,5 @@ def update_run_settings_for_rundoc(run_doc):
     run_doc.run_settings = temp
     return (run_doc, True)
 
+def get_view():
+    return view_virgin_settings_docs.get_view_class()

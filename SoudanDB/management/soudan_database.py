@@ -2,8 +2,6 @@ import couchdb
 from couchdb import schema
 from datetime import datetime
 from dateutil import tz
-from ..views import view_all_accepted_runs 
-from ..views import view_all_rejected_runs 
 import ROOT
 import glob
 import re
@@ -264,14 +262,6 @@ class SoudanServerClass(couchdb.client.Server):
         if rundoc:
             rundoc.store(self.get_database())
     
-    def get_rejected_runs(self):
-        view = view_all_rejected_runs.get_view_class()
-        return view(self.get_database())
-
-    def get_accepted_runs(self):
-        view = view_all_accepted_runs.get_view_class()
-        return view(self.get_database())
-
     def check_and_update_run(self, run_number):
         """
           Checks to see if a run exists, and updates it if the modification time

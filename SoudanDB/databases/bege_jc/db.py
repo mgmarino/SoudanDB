@@ -3,6 +3,8 @@ from SoudanDB.management.soudan_database import DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
      SoudanServerClass 
 from couchdb import schema
+from views import view_all_accepted_runs
+from views import view_all_LN_fills
 import os
 import re
 import glob
@@ -24,10 +26,13 @@ class BeGeJCDB(SoudanServerClass):
         temp_list = [line for line in temp_list if not re.match(".*LN2", line)] 
         return temp_list
 
+    def get_accepted_runs(self):
+        view = view_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
     def get_ln_docs(self):
-        temp_list = list(self.get_database())
-        temp_list = [line for line in temp_list if re.match(".*LN2", line)] 
-        return temp_list
+        view = view_all_LN_fills.get_view_class()
+        return view(self.get_database())
 
     def get_doc(self, doc):
         adoc = self.get_run(doc)
