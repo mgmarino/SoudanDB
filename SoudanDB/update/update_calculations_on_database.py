@@ -12,8 +12,6 @@ def update_calculations_on_database():
             mod = getattr(mod, comp)
         return mod
 
-    function_list = []
-
     # Which database are we using?
     # Grab all the modules from the update directory
     module_list = []
@@ -24,41 +22,25 @@ def update_calculations_on_database():
         load = pkgutil.find_loader('%s.%s' % (current_db_name, name))
         mod = load.load_module("%s.%s" % (current_db_name,name))
         module_list.append(mod)
-        for aname in mod.__dict__.keys():
-            if inspect.isfunction(getattr(mod, aname)):
-                function_list.append(getattr(mod, aname))
 
+    print "Performing the following updates: " 
+    must_cycle = False
     for amod in module_list: 
         # Get the view to use
         view = amod.get_view()
         list_of_docs = view(server.get_database())
+        print "  %s" % mod.__name__
         for id in list_of_docs:
             run_doc = server.get_doc(id.id)
-            if not run_doc: continue
+            if not run_doc: 
+                print "    Error finding %s" % id.id
+                continue
             (run_doc, must_reinsert) = amod.update_rundoc(run_doc)
             if must_reinsert:
-                print "Updating run number: %s" % run_doc.id
+                must_cycle = True
+                print "    Updating run number: %s" % run_doc.id
                 server.insert_rundoc(run_doc)
 
-    """ 
-
-    for id in server.get_database():
-        run_doc = server.get_doc(id)
-        if not run_doc: continue
-        must_reinsert = False
-        for function in function_list:
-            try:
-                (run_doc, temp_bool) = function(run_doc)
-            except AttributeError:
-                # This means the calling function assumed
-                # it was a particular type of doc
-                temp_bool = False 
-                pass
-            must_reinsert = must_reinsert or temp_bool
-        if must_reinsert:
-            print "Updating run number: %s" % run_doc.id
-            server.insert_rundoc(run_doc)
-    """
-
-if __name__ == '__main__':
-    update_calculations_on_database()
+    if must_cycle:
+        print "Some documents were updated, cycling again to resolve all updates"
+        update_calculations_on_database()
