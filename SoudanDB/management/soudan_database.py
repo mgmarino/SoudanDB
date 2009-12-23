@@ -11,6 +11,9 @@ from ..utilities import utilities
 import os
 import sys
 from . import ServerSingleton, CurrentDBSingleton
+from ..views import view_database_updated_docs
+from calendar import timegm
+from time import strptime
 
 def SoudanServer():
     return ServerSingleton.get_server()
@@ -120,8 +123,17 @@ class MGDateTimeFieldClass(schema.DateTimeField):
         if value.tzinfo:
             value = value.astimezone(tz.tzutc()).replace(tzinfo=None)
         return schema.DateTimeField._to_json(self, value)
+    def _to_python_localtime(self, value):
+        if isinstance(value, basestring):
+            try:
+                value = value.split('.', 1)[0] # strip out microseconds
+                value = value.rstrip('Z') # remove timezone separator
+                timestamp = timegm(strptime(value, '%Y-%m-%dT%H:%M:%S'))
+                value = datetime.utcfromtimestamp(timestamp)
+            except ValueError, e:
+                raise ValueError('Invalid ISO date/time %r' % value)
+        return value
        
-
 class MGDocumentClass(schema.Document):
     @classmethod
     def update_schema(cls, old_doc):
@@ -171,6 +183,8 @@ class CutDocumentClass(MGDocumentClass):
         bool_of_cut = eval(self.string_of_cut)
         return bool_of_cut
  
+class UpdateDatabaseDocumentClass(MGDocumentClass):
+    time_of_last_update = MGDateTimeFieldClass() 
 
 class SoudanServerClass(couchdb.client.Server):
     
@@ -198,6 +212,34 @@ class SoudanServerClass(couchdb.client.Server):
         self.run_doc_class = run_doc_class
         
    
+    def get_last_update_run(self):
+        view = view_database_updated_docs.get_view_class()
+        all_docs = view(self.get_database()) 
+        if not all_docs or len(all_docs) == 0:
+            self.set_last_update_run(datetime.fromtimestamp(0))
+            return self.get_last_update_run()
+        for id in all_docs:
+            doc = UpdateDatabaseDocumentClass.load(self.get_database(), 
+                                                   str(id.id)) 
+            return doc.time_of_last_update
+        return 0
+
+    def set_last_update_run(self, time):
+        view = view_database_updated_docs.get_view_class()
+        all_docs = view(self.get_database()) 
+        update_doc = None
+        if not all_docs or len(all_docs) == 0:
+            update_doc = UpdateDatabaseDocumentClass()
+            update_doc._set_id("update_doc")
+        else:
+            for id in all_docs:
+                update_doc = UpdateDatabaseDocumentClass.load(
+                             self.get_database(), str(id.id)) 
+                break
+        update_doc.time_of_last_update = time
+        update_doc.store(self.get_database())
+
+
     def get_database(self):
         return self.soudan_db
 
