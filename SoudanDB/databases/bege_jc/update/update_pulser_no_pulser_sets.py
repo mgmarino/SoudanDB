@@ -17,7 +17,8 @@ def update_rundoc(run_doc):
 
     open_file = ROOT.TFile(run_doc.output_data_file_tier_2.pfn)
     main_tree = open_file.Get("energy_output_tree") 
-    if main_tree.GetEntries()-1 == last_event:
+    
+    if not main_tree or (main_tree.GetEntries()-1 == last_event):
         return (run_doc, False)
 
     # we have to update

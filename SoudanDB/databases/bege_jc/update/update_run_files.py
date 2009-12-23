@@ -6,6 +6,7 @@ import datetime
 import re
 import imp
 from ..views import view_virgin_docs
+from ..views import view_all_accepted_runs
 
 environment_vars={'LD_LIBRARY_PATH' : "/home/mgmarino/software/OrcaRoot/lib:/home/mgmarino/software/MaGe/lib:/home/mgmarino/software/MGDO/lib:/home/mgmarino/software/root/root_v5.26.00/lib:/home/mgmarino/software/geant4/geant4.9.1.p02/lib/Linux-g++:/home/mgmarino/software/CLHEP/2.0.3.2/lib",\
                   'PYTHONPATH' : "/home/mgmarino/software/root/root_v5.26.00/lib",\
@@ -42,6 +43,8 @@ def update_rundoc(rundoc):
             dict.md5hash = get_hash_of_file(dict.pfn)
         if program and (rundoc_was_modified or not os.path.exists(dest)):
             # Check to see if is a py script, if so load the module
+            if os.path.exists(dest):
+                os.unlink(dest)
             basename = os.path.basename(program)
             if re.match(".*\.py\Z", basename):
                 print "Using python module %s, executing main(%s, %s) from module" % \
@@ -51,7 +54,7 @@ def update_rundoc(rundoc):
                     print "Imported module not well constructed, exiting"
                     break
                 new_module.main(dict.pfn, dest)
-           
+             
             else:
                 print "Running: %s %s %s" % (program, dict.pfn, dest)
                 return_value = subprocess.call([program, dict.pfn, dest], \
@@ -62,10 +65,15 @@ def update_rundoc(rundoc):
                     if os.path.exists(dest):
                         os.unlink(dest)
                     break
+            if not os.path.exists(dest):
+                print "Error in %s, %s not created" % (rundoc.id, dest)
+                rundoc_was_modified = False
+                break
             rundoc_was_modified = True
 
 
     return (rundoc, rundoc_was_modified)
 
 def get_view():
+    #return view_all_accepted_runs.get_view_class()
     return view_virgin_docs.get_view_class()

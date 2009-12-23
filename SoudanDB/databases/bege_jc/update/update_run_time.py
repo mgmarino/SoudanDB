@@ -12,6 +12,9 @@ def update_rundoc(run_doc):
     output_dictionary = {}
     open_file = ROOT.TFile(run_doc.output_data_file_tier_2.pfn)
     main_tree = open_file.Get("energy_output_tree") 
+    if not main_tree: 
+        print "Problem with %s" % run_doc.id
+        return (run_doc, False)
     main_tree.GetEntry(0)
     first_time = main_tree.time
     main_tree.GetEntry(main_tree.GetEntries()-2)

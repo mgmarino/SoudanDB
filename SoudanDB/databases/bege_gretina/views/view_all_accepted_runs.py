@@ -12,10 +12,11 @@ function(doc) {
        //range of ch2 (I had limited measurements to the range of ch1, and want
        //to see how rise times compare with those in the known peaks up there
        //in energy)
+       if(isNaN(int_of_doc_id)) return;
        if (int_of_doc_id == 331 || 
            int_of_doc_id == 332) {
          return;
        }
-       emit(parseInt(doc._id), null); 
+       emit(int_of_doc_id, null); 
      }
     ''')

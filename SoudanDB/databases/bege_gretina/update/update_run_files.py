@@ -6,6 +6,7 @@ import datetime
 import re
 import imp
 from ..views import view_virgin_docs
+from ..views import view_all_runs_modification
 
 environment_vars={'LD_LIBRARY_PATH' : "/home/mgmarino/software/OrcaRoot/lib:/home/mgmarino/software/MaGe/lib:/home/mgmarino/software/MGDO/lib:/home/mgmarino/software/root/root_v5.26.00/lib:/home/mgmarino/software/geant4/geant4.9.1.p02/lib/Linux-g++:/home/mgmarino/software/CLHEP/2.0.3.2/lib",\
                   'PYTHONPATH' : "/home/mgmarino/software/root/root_v5.26.00/lib",\
@@ -68,4 +69,5 @@ def update_rundoc(rundoc):
     return (rundoc, rundoc_was_modified)
 
 def get_view():
+    #return view_all_runs_modification.get_view_class()
     return view_virgin_docs.get_view_class()

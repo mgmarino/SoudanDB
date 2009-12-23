@@ -6,6 +6,7 @@ def get_view_class():
 function(doc) {
        if (doc.ln_data_file) return;
        var int_of_doc_id = parseInt(doc._id);
+       if (isNaN(int_of_doc_id)) return;
 
        // We don't accept any runs before 4 December.  
        // The runs before this were with a different DAQ system.

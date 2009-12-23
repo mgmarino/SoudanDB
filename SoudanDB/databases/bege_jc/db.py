@@ -1,13 +1,17 @@
-#!/bin/env python
 from SoudanDB.management.soudan_database import DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
      SoudanServerClass 
 from couchdb import schema
 from views import view_all_accepted_runs
 from views import view_all_LN_fills
+from views import view_all_runs
+from views import view_all_runs_modification
 import os
 import re
 import glob
+from datetime import datetime
+from SoudanDB.management.soudan_database import MGDateTimeFieldClass
+import time
 
 soudan_db_name = 'soudan_bege_db'
 soudan_cuts_db_name = 'soudan_bege_cuts_db'
@@ -22,9 +26,8 @@ class BeGeJCDB(SoudanServerClass):
                               soudan_cuts_db_name,
                               RunDocumentClass)
     def get_run_docs(self):
-        temp_list = list(self.get_database())
-        temp_list = [line for line in temp_list if not re.match(".*LN2", line)] 
-        return temp_list
+        view = view_all_runs.get_view_class()
+        return view(self.get_database())
 
     def get_accepted_runs(self):
         view = view_all_accepted_runs.get_view_class()
@@ -41,12 +44,14 @@ class BeGeJCDB(SoudanServerClass):
         return adoc
 
     def get_run(self, run_number):
-        if str(run_number) in self.get_run_docs(): 
+        temp_list = [id.id for id in self.get_run_docs()]
+        if str(run_number) in temp_list: 
             return self.run_doc_class.load(self.get_database(), str(run_number))
         return None
 
     def get_ln(self, lnrun):
-        if str(lnrun) in self.get_ln_docs(): 
+        temp_list = [id.id for id in self.get_ln_docs()]
+        if str(lnrun) in temp_list: 
             return LNFillClass.load(self.get_database(), str(lnrun))
         return None
 
@@ -56,12 +61,74 @@ class BeGeJCDB(SoudanServerClass):
           of the local files is more recent than the modification time of the 
           database document. 
         """
-        run_doc = self.get_run(lnfilltime)
+        run_doc = self.get_ln(lnfilltime)
         if not run_doc:
-            run_doc = LNFillClass.build_lnDocumentClass(lnfilltime)
+            run_doc = LNFillClass.build_document(lnfilltime)
             if run_doc:
                 print "LN %s is not in database, inserting..." % lnfilltime
                 self.insert_rundoc(run_doc)
+
+def update_database():
+    #First get all the files together 
+    import re
+    def get_run_number_from_raw_data_file(datafile_name):
+        temp_num = int("20" + datafile_name) 
+        return temp_num
+
+    soudan_db = BeGeJCDB()
+    start_run_time = datetime.now() 
+    last_run_time = soudan_db.get_last_update_run() 
+    print "Starting:", start_run_time
+    print "Checking for new docs from last run time:",  last_run_time
+    print "Checking normal runs"
+    temp = os.listdir(data_file_directories[0])
+    temp = [line for line in temp if re.match("[0-9]*\Z", line)]
+    temp = [line for line in temp 
+             if (datetime.fromtimestamp(os.path.getmtime("%s/%s" % 
+                   (data_file_directories[0], line))) >= last_run_time or
+                 datetime.fromtimestamp(os.path.getctime("%s/%s" % 
+                   (data_file_directories[0], line))) >= last_run_time)]                   
+    number_list = []
+    for file in temp:
+        number_list.append(get_run_number_from_raw_data_file(file))
+
+    number_list.sort()
+    for num in number_list:
+        soudan_db.check_and_update_run(num)
+
+    # Now check the other documents to make sure they are updated
+    # This is kinda dirty and it shouldn't generally happen.
+    view = view_all_runs_modification.get_view_class()
+    list = view(soudan_db.get_database())
+
+    field = MGDateTimeFieldClass()
+    number_list = []
+    for i in list:
+        allfiles = i.value
+        for afile, timestamp in allfiles:
+            if not afile or not timestamp: continue
+            this_mod_time = os.path.getmtime(afile)
+            timestamp = time.mktime(field._to_python(timestamp).timetuple())
+            if this_mod_time != timestamp:
+                print afile, this_mod_time, timestamp
+                number_list.append(i.id)
+                break
+    for num in number_list:
+        soudan_db.delete_run(num)
+        soudan_db.check_and_update_run(num)
+
+    print "Checking ln runs"
+    temp = os.listdir(ln_fill_directory)
+    temp = [line for line in temp if not re.match(".*png", line)]
+    temp = [line for line in temp 
+             if (datetime.fromtimestamp(os.path.getmtime("%s/%s" % 
+                   (ln_fill_directory, line))) >= last_run_time or
+                 datetime.fromtimestamp(os.path.getctime("%s/%s" % 
+                   (ln_fill_directory, line))) >= last_run_time)]                   
+    temp = ["20"+line for line in temp]
+    for fill in temp:
+        soudan_db.check_and_update_lnfill(fill)
+    soudan_db.set_last_update_run(start_run_time)
 
 class RunTimeDict(schema.DictField):
     def __init__(self):
@@ -177,32 +244,4 @@ class LNFillClass(MGDocumentClass):
         return return_class
 
         
-def update_database():
-    #First get all the files together 
-    import re
-    def get_run_number_from_raw_data_file(datafile_name):
-        temp_num = int("20" + datafile_name) 
-        return temp_num
 
-    print "Checking normal runs"
-    temp = os.listdir(data_file_directories[0])
-    temp = [line for line in temp if re.match("[0-9]*\Z", line)]
-    number_list = []
-    for file in temp:
-        number_list.append(get_run_number_from_raw_data_file(file))
-
-    number_list.sort()
-    soudan_db = BeGeJCDB()
-    for num in number_list:
-        soudan_db.check_and_update_run(num)
-
-    print "Checking ln runs"
-    temp = os.listdir(ln_fill_directory)
-    temp = ["20"+line for line in temp if not re.match(".*png", line)]
-    for fill in temp:
-        soudan_db.check_and_update_lnfill(fill)
-
-
-if __name__ == '__main__':
-    # Means we are called as a script
-    update_database()

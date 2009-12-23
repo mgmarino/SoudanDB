@@ -1,4 +1,3 @@
-#!/bin/env python
 from SoudanDB.management.soudan_database import RunTimeDict, DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
      SoudanServerClass 
@@ -7,6 +6,7 @@ import os
 import re
 import glob
 from views import view_all_accepted_runs
+from datetime import datetime
 
 # Constants to access database
 soudan_db_name = 'soudan_bege_gretina_db'
@@ -35,17 +35,28 @@ def update_database():
     def get_run_number_from_raw_data_file(datafile_name):
         return re.match(".*BegeFinal_Run([0-9]*)\Z", datafile_name).group(1)
 
+    soudan_db = BeGeGretinaDB()
+    start_run_time = datetime.now() 
+    last_run_time = soudan_db.get_last_update_run() 
+    print "Starting:", start_run_time
+    print "Checking for new docs from last run time:",  last_run_time
     print "Checking normal runs"
     temp = os.listdir(data_file_directories[0])
     temp = [line for line in temp if re.match(".*BegeFinal_Run[0-9]*\Z", line)]
+    
+    temp = [line for line in temp 
+             if (datetime.fromtimestamp(os.path.getmtime("%s/%s" % 
+                   (data_file_directories[0], line))) >= last_run_time or
+                 datetime.fromtimestamp(os.path.getctime("%s/%s" % 
+                   (data_file_directories[0], line))) >= last_run_time)]                   
     number_list = []
     for file in temp:
         number_list.append(get_run_number_from_raw_data_file(file))
 
     number_list.sort()
-    soudan_db = BeGeGretinaDB()
     for num in number_list:
         soudan_db.check_and_update_run(num)
+    soudan_db.set_last_update_run(start_run_time)
 
 class RunDocumentClass(MGDocumentClass):
     raw_data_file_tier_0 = DataFileClass() 
@@ -95,7 +106,3 @@ class RunDocumentClass(MGDocumentClass):
 
         return return_class
 
-
-if __name__ == '__main__':
-    # Means we are called as a script
-    update_database()
