@@ -15,6 +15,9 @@ from ..views import view_database_updated_docs
 from calendar import timegm
 from time import strptime
 
+local_server = True
+#local_server = False
+
 def SoudanServer():
     return ServerSingleton.get_server()
 
@@ -22,8 +25,12 @@ def get_current_db_module():
     return CurrentDBSingleton.get_current_db_module()
 
 majorana_db_server = 'http://127.0.0.1:5984'
-majorana_db_username = 'ewi'
-majorana_db_password = 'darkma11er'
+if local_server:  
+    majorana_db_username = ''
+    majorana_db_password = ''
+else:
+    majorana_db_username = 'ewi'
+    majorana_db_password = 'darkma11er'
 
 class RunTimeDict(schema.DictField):
     def __init__(self):
@@ -198,12 +205,13 @@ class SoudanServerClass(couchdb.client.Server):
             self.soudan_db = self[db_name]
             print "Database found."
 
-        if cuts_db_name not in self:
-            self.soudan_cuts_db = self.create(cuts_db_name)
-            print "Cuts database created."
-        else:
-            self.soudan_cuts_db = self[cuts_db_name]
-            print "Cuts database found."
+        if cuts_db_name:
+            if cuts_db_name not in self:
+                self.soudan_cuts_db = self.create(cuts_db_name)
+                print "Cuts database created."
+            else:
+                self.soudan_cuts_db = self[cuts_db_name]
+                print "Cuts database found."
         
         if not cut_doc_class:
             self.cut_doc_class = CutDocumentClass
@@ -211,7 +219,9 @@ class SoudanServerClass(couchdb.client.Server):
             self.cut_doc_class = cut_doc_class
         self.run_doc_class = run_doc_class
         
-   
+    def get_lfn_path(self):   
+        return os.path.expanduser("~/Dropbox/SoudanData")
+
     def get_last_update_run(self):
         view = view_database_updated_docs.get_view_class()
         all_docs = view(self.get_database()) 

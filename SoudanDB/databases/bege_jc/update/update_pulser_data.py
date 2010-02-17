@@ -9,6 +9,7 @@ def update_rundoc(run_doc):
     ROOT.RooMsgService.instance().setSilentMode(True)
     open_file = ROOT.TFile(run_doc.output_data_file_tier_2.pfn)
     tree = open_file.Get("energy_output_tree")
+    if not tree: return (run_doc, False)
     energyRV = ROOT.RooRealVar ("energy", "energy", 0, 0.05)
     sigmaRV = ROOT.RooRealVar("sigma", "sigma", .01, 0.000, 0.05)
     meanRV = ROOT.RooRealVar("mean", "mean", .02, 0, 0.05)

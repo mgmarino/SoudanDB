@@ -29,7 +29,7 @@ def update_calculations_on_database():
         # Get the view to use
         view = amod.get_view()
         list_of_docs = view(server.get_database())
-        print "  %s" % mod.__name__
+        print "  %s" % amod.__name__
         for id in list_of_docs:
             run_doc = server.get_doc(id.id)
             if not run_doc: 

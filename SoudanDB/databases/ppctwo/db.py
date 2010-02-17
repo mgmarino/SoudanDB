@@ -1,7 +1,11 @@
-from ....management.soudan_database import RunTimeDict, DataFileClass, \
+from SoudanDB.management.soudan_database import RunTimeDict, DataFileClass, \
      AllReducedDataFilesClass, BaselineDict, QADataClass, TriggerDataClass,\
      NoiseCheckClass, MGDateTimeFieldClass, PulserDataClass, CutsDictClass,\
-     SoudanServerClass 
+     SoudanServerClass, MGDocumentClass 
+from views import view_all_accepted_runs, view_livetime_all_accepted_runs,\
+                  view_files_of_accepted_runs, view_starttime_all_accepted_runs
+from couchdb import schema
+import os
 soudan_db_name = 'soudan_db'
 soudan_cuts_db_name = 'soudan_cuts_db'
 raw_data_file_directory='/mnt/auto/data3EWI/SoudanData'
@@ -44,6 +48,26 @@ class PPCTwoDB(SoudanServerClass):
                 self.insert_rundoc(run_doc) 
     
         return False
+    def get_accepted_runs(self):
+        view = view_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_lfn_path(self):   
+        return os.path.expanduser("~/Dropbox/SoudanData/PPC2")
+
+    def get_starttime_of_runs(self):
+        view = view_starttime_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_livetime_of_runs(self):
+        view = view_livetime_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_files_of_runs(self):
+        view = view_files_of_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+
 class RunDocumentClass(MGDocumentClass):
     raw_data_file_tier_0 = DataFileClass() 
     root_data_file_tier_1 = DataFileClass() 

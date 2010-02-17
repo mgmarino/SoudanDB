@@ -1,13 +1,22 @@
 from couchdb.design import ViewDefinition
 
 def get_view_class():
-    return ViewDefinition("final", "all_accepted_runs", \
+    return ViewDefinition("final", "all_accepted_runs_ln_fills", \
     '''
 function(doc) {
-       if (doc.ln_data_file) return;
        var int_of_doc_id = parseInt(doc._id);
-       if (isNaN(int_of_doc_id)) return;
+       if (!isNaN(int_of_doc_id)) { 
+         if (int_of_doc_id < 20091204180000) {
+           return;
+         }
+       }
+       if (doc.ln_data_file) { 
+           var temp_str = new String(doc._id);
+           emit(parseInt(temp_str.split('.')[0]), 'LN');
+           return;
+       }
 
+       if (isNaN(int_of_doc_id)) return;
        // We don't accept any runs before 4 December.  
        // The runs before this were with a different DAQ system.
        // i.e. no digitized pulses.
@@ -28,7 +37,7 @@ function(doc) {
            int_of_doc_id == 20091217123841) {
          return;
        }
-       emit(parseInt(doc._id), [doc.output_data_file_tier_2.lfn,
+       emit(int_of_doc_id, [doc.output_data_file_tier_2.lfn,
                                 doc.root_data_file_tier_1.pfn]); 
      }
     ''')

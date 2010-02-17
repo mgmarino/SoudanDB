@@ -25,7 +25,10 @@ function(doc) {
          [ 34, 154024],
          [ 32, 154355],
          [ 30, 154726],
-         [ 28, 155353]
+         [ 28, 155353],
+         [ 28, 160848],
+         [ 30, 161525],
+         [ 'var', 160013]
        ];
        var int_of_doc_id = parseInt(doc._id);
 
@@ -33,7 +36,8 @@ function(doc) {
        // and the run number as the value.
        for (i=0;i<pulser_list.length;i++) {
            if (pulser_list[i][1] + beginning_int == int_of_doc_id) {
-               emit(pulser_list[i][0], int_of_doc_id);
+               emit(pulser_list[i][0], [pulser_list[i][0], doc.output_data_file_tier_2.lfn,
+                                    doc.root_data_file_tier_1.pfn]);
                return; // Get out
            } 
        }

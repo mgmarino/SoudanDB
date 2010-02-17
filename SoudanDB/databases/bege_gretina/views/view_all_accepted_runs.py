@@ -17,6 +17,9 @@ function(doc) {
            int_of_doc_id == 332) {
          return;
        }
+       if (int_of_doc_id >= 560) {
+         return;
+       }
        emit(int_of_doc_id, null); 
      }
     ''')

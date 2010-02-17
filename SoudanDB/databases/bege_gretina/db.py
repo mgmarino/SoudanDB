@@ -6,6 +6,8 @@ import os
 import re
 import glob
 from views import view_all_accepted_runs
+from views import view_all_accepted_runs, view_livetime_all_accepted_runs,\
+                  view_files_of_accepted_runs, view_starttime_all_accepted_runs
 from datetime import datetime
 
 # Constants to access database
@@ -27,6 +29,22 @@ class BeGeGretinaDB(SoudanServerClass):
     def get_accepted_runs(self):
         view = view_all_accepted_runs.get_view_class()
         return view(self.get_database())
+
+    def get_lfn_path(self):   
+        return os.path.expanduser("~/Dropbox/SoudanData/GretinaBeGe")
+
+    def get_starttime_of_runs(self):
+        view = view_starttime_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_livetime_of_runs(self):
+        view = view_livetime_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_files_of_runs(self):
+        view = view_files_of_accepted_runs.get_view_class()
+        return view(self.get_database())
+
 
 
 def update_database():
@@ -57,6 +75,12 @@ def update_database():
     for num in number_list:
         soudan_db.check_and_update_run(num)
     soudan_db.set_last_update_run(start_run_time)
+
+class RunTimeDict(schema.DictField):
+    def __init__(self):
+        schema.DictField.__init__(self, schema.Schema.build(\
+          run_milliseconds = schema.FloatField(),\
+          run_milliseconds_error = schema.FloatField()))
 
 class RunDocumentClass(MGDocumentClass):
     raw_data_file_tier_0 = DataFileClass() 

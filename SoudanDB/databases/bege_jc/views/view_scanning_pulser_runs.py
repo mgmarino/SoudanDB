@@ -1,7 +1,7 @@
 from couchdb.design import ViewDefinition
 
 def get_view_class():
-    return ViewDefinition("final", "all_accepted_runs", \
+    return ViewDefinition("final", "all_scanning_pulser_runs", \
     '''
 function(doc) {
        if (doc.ln_data_file) return;
@@ -14,10 +14,6 @@ function(doc) {
        if (int_of_doc_id < 20091204180000) {
          return;
        }
-       // choose a date to analyze until.
-       if (int_of_doc_id > 20100208180000) {
-         return;
-       }
        // Juan ran a calibration run on the 17th of Dec, from his email:
        //Mike, you'll notice the file today at 12:31 is large. We performed a
        //scanning pulser calibration extending all the way out to the maximum
@@ -26,9 +22,8 @@ function(doc) {
        //in energy)
        if (int_of_doc_id == 20091217123128 ||
            int_of_doc_id == 20091217123841) {
-         return;
+         emit(parseInt(doc._id), [doc.output_data_file_tier_2.lfn,
+                                  doc.root_data_file_tier_1.pfn]); 
        }
-       emit(parseInt(doc._id), [doc.output_data_file_tier_2.lfn,
-                                doc.root_data_file_tier_1.pfn]); 
      }
     ''')

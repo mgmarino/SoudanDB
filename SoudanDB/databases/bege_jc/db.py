@@ -3,9 +3,12 @@ from SoudanDB.management.soudan_database import DataFileClass, \
      SoudanServerClass 
 from couchdb import schema
 from views import view_all_accepted_runs
+from views import view_all_accepted_runs_ln_fills
 from views import view_all_LN_fills
 from views import view_all_runs
 from views import view_all_runs_modification
+from views import view_first_efficiency_runs
+from views import view_scanning_pulser_runs
 import os
 import re
 import glob
@@ -23,7 +26,7 @@ ln_fill_directory = '/mnt/raid/data/Soudan/Data/BeGe/transfer'
 class BeGeJCDB(SoudanServerClass):
     def __init__(self):
         SoudanServerClass.__init__(self, soudan_db_name, 
-                              soudan_cuts_db_name,
+                              None,
                               RunDocumentClass)
     def get_run_docs(self):
         view = view_all_runs.get_view_class()
@@ -31,6 +34,18 @@ class BeGeJCDB(SoudanServerClass):
 
     def get_accepted_runs(self):
         view = view_all_accepted_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_accepted_runs_ln_fills(self):
+        view = view_all_accepted_runs_ln_fills.get_view_class()
+        return view(self.get_database())
+
+    def get_efficiency_runs(self):
+        view = view_first_efficiency_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_scanning_pulser_runs(self):
+        view = view_scanning_pulser_runs.get_view_class()
         return view(self.get_database())
 
     def get_ln_docs(self):
@@ -67,6 +82,10 @@ class BeGeJCDB(SoudanServerClass):
             if run_doc:
                 print "LN %s is not in database, inserting..." % lnfilltime
                 self.insert_rundoc(run_doc)
+
+    def get_lfn_path(self):   
+        return os.path.expanduser("~/Dropbox/SoudanData/BeGe")
+
 
 def update_database():
     #First get all the files together 
