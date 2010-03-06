@@ -24,7 +24,7 @@ function(doc) {
          return;
        }
        // choose a date to analyze until.
-       if (int_of_doc_id > 20100208180000) {
+       if (int_of_doc_id > 20100201000000) {
          return;
        }
        // Juan ran a calibration run on the 17th of Dec, from his email:
