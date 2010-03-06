@@ -3,10 +3,10 @@ class ServerSingleton:
     _soudan_server = None
     @classmethod
     def set_server(cls, server):
-        cls._soudan_server = server()
+        cls._soudan_server = server
     @classmethod
     def get_server(cls):
-        return cls._soudan_server 
+        return cls._soudan_server() 
 
 class CurrentDBSingleton:
     _current_database_module = None
