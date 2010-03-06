@@ -109,6 +109,7 @@ def job_engine( output_file,\
     output_tree = ROOT.TTree("sensitivity_tree", "sensitivity_tree")
 
     branch_list = []
+    string_list = []
     for key, val in input_variables.items(): 
         # Arg, checking types, shouldn't have to do this 
         root_type = ''
@@ -124,7 +125,8 @@ def job_engine( output_file,\
             array_type = 'l'
 
         if root_type == 'string':
-            output_tree.Branch(key, ROOT.string(val))
+            string_list.append(ROOT.string(val))
+            output_tree.Branch(key, string_list[-1])
         else:
             # We have to hold a reference to make sure
             # the array doesn't get killed

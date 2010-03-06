@@ -9,6 +9,8 @@ class BaseCalculation:
         if not self.exit_manager: return False
         return self.exit_manager.is_exit_requested()
 
+    def set_canvas(self, canv): self.c1 = canv
+
     def find_confidence_value_for_model(self, \
                                         model, \
                                         data, \

@@ -5,6 +5,7 @@
 import ROOT
 import ExclusionCalculation as ec
 import OscillationSensitivityCalculation as osc
+import DataCalculation as dat
 
 class WIMPModel:
     """
@@ -65,20 +66,12 @@ class WIMPModel:
         from pyWIMP.DMModels.wimp_model import WIMPModel
         from pyWIMP.DMModels.base_model import BaseVariables
         from pyWIMP.DMModels.flat_model import FlatModel
-        self.basevars = BaseVariables(time_beginning=0,\
-            time_in_years=self.total_time,\
-            energy_threshold=self.threshold,\
-            energy_max=self.energy_max)
+        if not self.basevars:
+            self.basevars = BaseVariables(time_beginning=0,
+                time_in_years=self.total_time,
+                energy_threshold=self.threshold,
+                energy_max=self.energy_max)
 
-        self.wimpClass = WIMPModel(self.basevars,\
-            mass_of_wimp=self.wimp_mass,\
-            constant_quenching=(not self.variable_quenching))
-
-        self.flatClass = FlatModel(self.basevars)
-
-        self.calculation_class = \
-            ec.ExclusionCalculation(self.exit_manager)
- 
         self.variables = ROOT.RooArgSet()
         if self.constant_time:
             self.basevars.get_time().setVal(0)
@@ -88,6 +81,19 @@ class WIMPModel:
         if not self.constant_energy:
             self.variables.add(self.basevars.get_energy())
 
+        self.model_normal = ROOT.RooRealVar("model_normal", 
+                                            "model_normal", 
+                                            1, -10, 1000)
+        self.wimpClass = WIMPModel(self.basevars,
+            mass_of_wimp=self.wimp_mass,
+            kilograms = self.mass_of_detector,
+            constant_quenching=(not self.variable_quenching))
+
+        self.flatClass = FlatModel(self.basevars)
+
+        self.calculation_class = \
+            ec.ExclusionCalculation(self.exit_manager)
+ 
         # This is where we define our models
         self.background_model =  self.flatClass.get_model()
         self.model = self.wimpClass.get_model()
@@ -97,19 +103,17 @@ class WIMPModel:
         self.background_normal = ROOT.RooRealVar("flat_normal", \
                                                  "flat_normal", \
                                                  self.total_counts, \
-                                                 0,\
+                                                 -10,\
                                                  3*self.total_counts)
-        self.model_normal = ROOT.RooRealVar("model_normal", \
-                                            "model_normal", \
-                                            1, 0, 100000)
-        self.model_extend = ROOT.RooExtendPdf("model_extend", \
-                                              "model_extend", \
-                                              self.model, \
-                                              self.model_normal)
         self.background_extend = ROOT.RooExtendPdf("background_extend", \
                                                    "background_extend", \
                                                    self.background_model, \
                                                    self.background_normal)
+        self.model_extend = ROOT.RooExtendPdf("model_extend", \
+                                               "model_extend", \
+                                               self.model, \
+                                               self.model_normal)
+
         self.added_pdf = ROOT.RooAddPdf("b+s", \
                                         "Background + Signal", \
                                         ROOT.RooArgList(\
@@ -129,15 +133,15 @@ class WIMPModel:
         import os
 
         ROOT.RooRandom.randomGenerator().SetSeed(0)
+        self.initialize()
         if self.show_plots:
-            self.c1 = ROOT.TCanvas()
+            self.calculation_class.set_canvas(ROOT.TCanvas())
         else:
             ROOT.gROOT.SetBatch()
 
         if not self.debug:
             ROOT.RooMsgService.instance().setSilentMode(True)
             ROOT.RooMsgService.instance().setGlobalKillBelow(3)
-        self.initialize()
 
         # Open the pipe to write back on
         write_pipe = os.fdopen(self.output_pipe, 'w') 
@@ -157,6 +161,7 @@ class WIMPModel:
         # This integral is in units of pb^{-1} 
         norm_integral_val = norm_integral.getVal()
 
+        print norm_integral_val
         if norm_integral_val == 0.0:
             print "Integral defined as 0, meaning it is below numerical precision"
             print "Aborting further calculation"
@@ -171,20 +176,122 @@ class WIMPModel:
        
 
         results_list = \
-            self.calculation_class.scan_confidence_value_space_for_model(\
-                self.fitting_model, \
-                self.data_set_model, \
-                self.test_variable, \
-                self.norm, \
-                self.variables, \
-                self.total_counts, \
-                self.number_iterations, \
-                self.confidence_level,\
-                self.show_plots,\
+            self.calculation_class.scan_confidence_value_space_for_model(
+                self.fitting_model, 
+                self.data_set_model, 
+                self.test_variable, 
+                self.norm, 
+                self.variables, 
+                self.total_counts, 
+                self.number_iterations, 
+                self.confidence_level,
+                self.show_plots,
                 self.debug)
 
         write_pipe.write(pickle.dumps(results_list))
         write_pipe.close()
+
+class DataExclusion(WIMPModel):
+    def get_requested_values(cls):
+        adict = WIMPModel.get_requested_values()
+        adict['data_file'] = ('Name of data file', 'temp.root')
+        adict['workspace_name'] = ('Name of Workspace inside data file', 'output_data')
+        adict['data_set_name'] = ('Name of DataSet inside workspace', '')
+        adict['data_set_cuts'] = ('Name of cuts to apply', '')
+        return adict
+    get_requested_values = classmethod(get_requested_values)
+    def initialize(self):
+        # The background model is the same, but now we switch it to the data model
+        from pyWIMP.DMModels.low_energy_background import LowEnergyBackgroundModel
+        from pyWIMP.DMModels.base_model import BaseVariables
+        from pyWIMP.DMModels.wimp_model import WIMPModel
+        open_file = ROOT.TFile(self.data_file)
+        self.workspace = open_file.Get(self.workspace_name)
+        # Do some introspection, we can handle TH1s, and RooAbsData 
+        print self.workspace
+        #if not hasattr(self.workspace, 'IsA'): 
+        #    print "Requested: %s, isn't a TObject?!" % self.workspace_name
+        #    raise "pyWIMP.IncorrectDataType"
+        #if self.workspace.Inherets() != ROOT.TH1.Class():
+        #    print "Requested: %s, isn't a TH1!" % self.data_set_name
+        #    raise "pyWIMP.IncorrectDataType"
+        #elif self.workspace.IsA() != ROOT.RooWorkspace.Class():
+        #    print "Requested: %s, isn't a RooWorkspace!" % self.data_set_name
+        #    raise "pyWIMP.IncorrectDataType"
+
+        #energy = self.workspace.var('ee_energy') 
+        self.basevars = BaseVariables(time_beginning=0,
+            time_in_years=self.total_time,
+            energy_threshold=self.threshold,
+            energy_max=self.energy_max)
+        #energy.setMax(self.energy_max)
+        #energy.setMin(self.threshold)
+        #self.basevars.set_energy(energy)
+
+
+        #if not self.data_set_model:
+        #    print "No dataset name defined, taking first in set: "
+        #    data_list = self.workspace.allData()
+        #    if len(data_list) != 1:
+        #        print "RooWorkspace have either none or too many data sets?  Needs one..."
+        #        raise "pyWIMP.IncorrectDataLength"
+        #    self.data_set_model = data_list.front()
+        #if self.data_set_cuts:
+        #    self.data_set_model = self.data_set_model.reduce(self.data_set_cuts)
+        self.variables = ROOT.RooArgSet()
+        if self.constant_time:
+            self.basevars.get_time().setVal(0)
+            self.basevars.get_time().setConstant(True)
+        else:
+            self.variables.add(self.basevars.get_time())
+        if not self.constant_energy:
+            self.variables.add(self.basevars.get_energy())
+
+        self.data_set_model = ROOT.RooDataHist("data", "data", 
+                                ROOT.RooArgList(self.basevars.get_energy()),
+                                self.workspace)
+        self.model_normal = ROOT.RooRealVar("model_normal", 
+                                            "model_normal", 
+                                            1, 0, 100*self.data_set_model.sumEntries())
+        self.wimpClass = WIMPModel(self.basevars,
+            mass_of_wimp=self.wimp_mass,
+            kilograms = self.mass_of_detector,
+            constant_quenching=(not self.variable_quenching))
+
+        # This is where we define our models
+        self.model = self.wimpClass.get_model()
+        #self.model = self.wimpClass.get_simple_model()
+        self.norm = self.wimpClass.get_normalization().getVal()
+        self.is_initialized = True
+
+        self.background_normal = ROOT.RooRealVar("flat_normal", 
+                                                 "flat_normal", 
+                                                 self.total_counts, 
+                                                 0,
+                                                 3*self.total_counts)
+        self.model_extend = ROOT.RooExtendPdf("model_extend", 
+                                               "model_extend", 
+                                               self.model, 
+                                               self.model_normal)
+
+        self.calculation_class = \
+            dat.DataCalculation(self.exit_manager)
+        self.low_energy = LowEnergyBackgroundModel(self.basevars)
+        self.low_energy_model = self.low_energy.get_model()
+        self.background_normal.setMax(2*self.data_set_model.sumEntries())
+        self.background_extend = ROOT.RooExtendPdf("background_extend", 
+                                                   "background_extend", 
+                                                   self.low_energy_model, 
+                                                   self.background_normal)
+        self.added_pdf = ROOT.RooAddPdf("b+s", 
+                                        "Background + Signal", 
+                                        ROOT.RooArgList(
+                                        self.background_extend, 
+                                        self.model_extend))
+        self.test_variable = self.model_normal
+        self.fitting_model = self.added_pdf
+        #getattr(self.workspace, 'import')(self.fitting_model)
+        
 
 
 class OscillationSignalDetection(WIMPModel):

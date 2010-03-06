@@ -2,18 +2,15 @@ import ROOT
 from base_model import BaseModel
 
 class WIMPModel(BaseModel):
-    def __init__(self, \
-                 basevars, \
-                 mass_of_wimp=20, \
-                 kilograms=1,\
+    def __init__(self, 
+                 basevars, 
+                 mass_of_wimp=20, 
+                 kilograms=1,
                  constant_quenching=True):
         # Normally, we don't want to do this, but this keeps 
         # it from importing this module until the last moment.
         BaseModel.__init__(self, basevars)
         import pyWIMP.WIMPPdfs as pdfs  
-
-        self.flat_normal = ROOT.RooRealVar("flat_normal", "flat_normal", \
-                         0, 10000 )
 
         # constant quenching
         if constant_quenching:
@@ -50,7 +47,7 @@ class WIMPModel(BaseModel):
         self.v_sub_0 = ROOT.RooRealVar("v_sub_0", \
                   "Base Velocity", 230, "km s^-1") 
         self.v_sub_esc = ROOT.RooRealVar("v_sub_esc", \
-                  "Escape Velocity", 650, "km s^-1") 
+                  "Escape Velocity", 600, "km s^-1") 
         self.mass_of_target = ROOT.RooFormulaVar("mass_of_target", \
                          "Mass of Target", "0.932*@0", \
                          ROOT.RooArgList(self.atomic_mass_of_target)) 
@@ -84,13 +81,31 @@ class WIMPModel(BaseModel):
                        "Mass of Wimp", mass_of_wimp, "GeV c^{-2}") 
  
 
-        self.R_sub_0 = ROOT.RooFormulaVar("R_sub_0", "Base Rate",\
-                       "365*@4*@5*503.4/(@0*@1)*(@2/0.4)*(@3/230.)", \
-                       ROOT.RooArgList(self.mass_of_target, self.mass_of_wimp,\
-                       self.density_of_dark_matter, self.v_sub_0,\
-                       self.kilograms, self.dQ_over_dE))
+        # The following takes into account the rate with days vs.
+        # years and the kilogram mass of the detector
+        # Be careful here, if time is constant be sure to take that into account:
+        if basevars.get_time().isConstant():
+            time_dif = basevars.get_time().getMax() - basevars.get_time().getMin()
+            # This is the time in units of years
+            print time_dif
+            self.R_sub_0 = ROOT.RooFormulaVar("R_sub_0", "Base Rate",\
+                           "365*%f*@4*@5*503.4/(@0*@1)*(@2/0.4)*(@3/230.)" % time_dif, \
+                           #"503.4/(@0*@1)*(@2/0.4)*(@3/230.)", \
+                           ROOT.RooArgList(self.mass_of_target, self.mass_of_wimp,\
+                           self.density_of_dark_matter, self.v_sub_0,\
+                           self.kilograms, self.dQ_over_dE))
+            self.R_sub_0.setUnit("pb^{-1}") 
+            print self.R_sub_0.getVal()
 
-        self.R_sub_0.setUnit("pb^{-1} yr^{-1}") 
+        else:
+            print "Nope"
+            self.R_sub_0 = ROOT.RooFormulaVar("R_sub_0", "Base Rate",\
+                           "365*@4*@5*503.4/(@0*@1)*(@2/0.4)*(@3/230.)", \
+                           ROOT.RooArgList(self.mass_of_target, self.mass_of_wimp,\
+                           self.density_of_dark_matter, self.v_sub_0,\
+                           self.kilograms, self.dQ_over_dE))
+
+            self.R_sub_0.setUnit("pb^{-1} yr^{-1}") 
         
         # The following is dealing with the generation of the dR/dQ
         # NO escape velocity!
@@ -107,10 +122,16 @@ class WIMPModel(BaseModel):
         # an exponential form factor
 
  
-        self.normalization = ROOT.RooFormulaVar("normalization",\
-                       "Normalization Constant to WIMP-nucleon xs", \
-                       "((0.932/(@0*@1/(@0+@1)))**2)*(1/@2)**2",\
-                        ROOT.RooArgList(self.mass_of_target,\
+        # This if from Lewin, in particular: G.J. Alner et al. / Astroparticle Physics 23 (2005) p. 457 
+        # This is the conversion from sigma to normalized per nucleon
+
+        self.normalization = ROOT.RooFormulaVar("normalization",
+                       "Normalization Constant to WIMP-nucleon xs", 
+                       #"(9.1e-3)*((1/@0)**2)/@1",
+                       # ROOT.RooArgList(self.atomic_mass_of_target,
+                       #   self.r)) 
+                       "((0.932/(@0*@1/(@0+@1)))**2)*(1/@2)**2",
+                        ROOT.RooArgList(self.mass_of_target,
                         self.mass_of_wimp, self.atomic_mass_of_target)) 
         self.normalization.setUnit("pb pb^{-1}")
 
@@ -166,10 +187,13 @@ class WIMPModel(BaseModel):
                          self.v_sub_esc)
 
  
-        self.simple_model = ROOT.RooGenericPdf("simple model", "Lewin/Smith simple model",\
-                         "0.751*@3/(@1*@2)*exp(-0.561*@0/(@1*@2))", \
-                         ROOT.RooArgList(self.energy, \
-                         self.E_sub_0, self.r,self.R_sub_0))
+        self.simple_model = pdfs.MGMWimpDiffRateBasicPdf("simple model", 
+                         "Lewin/Smith simple model",
+                         self.R_sub_0,
+                         self.E_sub_0,
+                         self.energy,
+                         self.r)#,
+                         #self.woods_saxon_helm_ff_squared)
 
                                  
        

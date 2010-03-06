@@ -9,14 +9,14 @@ class ExclusionCalculation(BaseCalculation.BaseCalculation):
     type variables.
     """
 
-    def find_confidence_value_for_model(self, \
-                                        model, \
-                                        data, \
-                                        model_amplitude, \
-                                        conf_level, \
-                                        mult_factor, \
-                                        print_level = -1, \
-                                        verbose = False, \
+    def find_confidence_value_for_model(self, 
+                                        model, 
+                                        data, 
+                                        model_amplitude, 
+                                        conf_level, 
+                                        mult_factor, 
+                                        print_level = -1, 
+                                        verbose = False, 
                                         tolerance = 0.001):
     
         # Error check
@@ -27,11 +27,11 @@ class ExclusionCalculation(BaseCalculation.BaseCalculation):
         # First ML fit, let everything float
         model_amplitude.setConstant(False)
         model_amplitude.setVal(1)
-        result = model.fitTo(data, \
-                             ROOT.RooFit.Save(True),\
-                             ROOT.RooFit.PrintLevel(print_level),\
-                             ROOT.RooFit.Verbose(verbose),\
-                             ROOT.RooFit.Hesse(False),\
+        result = model.fitTo(data, 
+                             ROOT.RooFit.Save(True),
+                             ROOT.RooFit.PrintLevel(print_level),
+                             ROOT.RooFit.Verbose(verbose),
+                             ROOT.RooFit.Hesse(False),
                              ROOT.RooFit.Minos(False))
     
         # Check fit status
@@ -64,12 +64,12 @@ class ExclusionCalculation(BaseCalculation.BaseCalculation):
     
         number_of_steps = 0
         while not self.is_exit_requested():
-            result = model.fitTo(data, \
-                                 ROOT.RooFit.Save(True),\
-                                 ROOT.RooFit.PrintLevel(print_level),\
-                                 ROOT.RooFit.Verbose(verbose),\
-                                 ROOT.RooFit.Hesse(False),\
-                                 ROOT.RooFit.Minos(False))#,\
+            result = model.fitTo(data, 
+                                 ROOT.RooFit.Save(True),
+                                 ROOT.RooFit.PrintLevel(print_level),
+                                 ROOT.RooFit.Verbose(verbose),
+                                 ROOT.RooFit.Hesse(False),
+                                 ROOT.RooFit.Minos(False))#,
         
             # Check fit status
             if result.status() != 0: 
@@ -98,8 +98,8 @@ class ExclusionCalculation(BaseCalculation.BaseCalculation):
            
         # We're done, return results
         if self.is_exit_requested(): return None
-        return {'model_amplitude' : model_amplitude.getVal(), \
-                'cross_section' : model_amplitude.getVal()*mult_factor,\
-                'orig_min_negloglikelihood' : orig_Nll,\
+        return {'model_amplitude' : model_amplitude.getVal(), 
+                'cross_section' : model_amplitude.getVal()*mult_factor,
+                'orig_min_negloglikelihood' : orig_Nll,
                 'final_min_negloglikelihood' : new_minNll}
      
