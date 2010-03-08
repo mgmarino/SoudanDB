@@ -2,6 +2,7 @@ import ROOT
 import os
 import glob
 import re
+import exceptions
 
 delineate = '*************************************'
 for i in range(len(__name__)):
@@ -12,8 +13,9 @@ print "Performing Initialization of module: %s" % __name__
 
 directory = os.path.dirname( os.path.realpath( __file__ ) )
 if not hasattr(ROOT, "MGMWimpTimeFunction"):
-    ROOT.gSystem.Load("%s/libMGDOWIMPPdfs.so" % directory);
-    ROOT.gROOT.ProcessLine(".include \"%s\"" % directory);
+    if not ROOT.gSystem.Load("%s/../lib/libMGDOWIMPPdfs" % directory) == 0:
+        raise exceptions.ImportError, "libMGDOWIMPPdfs does not exist, please run ./configure && make"
+    ROOT.gROOT.ProcessLine(".include \"%s\"" % directory)
 
 #now export the items
 all_object_files = glob.glob("%s/*.hh" % directory)
