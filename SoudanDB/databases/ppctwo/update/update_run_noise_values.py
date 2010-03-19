@@ -1,10 +1,6 @@
-from management.soudan_database import RunDocumentClass
 import ROOT
+from ..views import view_virgin_run_noise
 def update_run_noise_values_for_rundoc(run_doc):
-
-    if run_doc.noise_check.events_in_region_point6_to_10_keV:
-        # We've already run this, continue
-        return (run_doc, False)
 
     open_file = ROOT.TFile(run_doc.output_data_file_tier_3.low_energy.pfn)
     main_tree = open_file.Get("wf_analysis")
@@ -24,3 +20,5 @@ def update_run_noise_values_for_rundoc(run_doc):
     open_file.Close()
     return (run_doc, True)
         
+def get_view():
+    return view_virgin_run_noise.get_view_class()

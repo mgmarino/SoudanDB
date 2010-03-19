@@ -1,9 +1,8 @@
 
+from ..views import view_virgin_pulser_data_docs
+import ROOT
 def update_pulser_data_for_rundoc(run_doc):
-    import ROOT
     # check to see if we need to update
-    if run_doc.pulser_data.sigma:
-        return (run_doc, False)
     # following shuts off all messages from MINUIT.
     ROOT.RooMsgService.instance().setSilentMode(True)
     open_file = ROOT.TFile(run_doc.output_data_file_tier_3.low_energy.pfn)
@@ -38,3 +37,6 @@ def update_pulser_data_for_rundoc(run_doc):
     pd.sigma = sigmaRV.getVal() 
     pd.sigma_err = sigmaRV.getError() 
     return (run_doc, True)
+
+def get_view():
+    return view_virgin_pulser_data_docs.get_view_class()

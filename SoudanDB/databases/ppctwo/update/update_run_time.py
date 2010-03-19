@@ -1,3 +1,4 @@
+from ..views import view_virgin_livetime
 def update_run_time_for_rundoc(run_doc):
     """
       Updates a rundoc with the calculation of the livetime 
@@ -5,8 +6,6 @@ def update_run_time_for_rundoc(run_doc):
       Can be used to popluate a RunTimeDict
     """
     import ROOT
-    if run_doc.livetime.run_seconds:
-        return (run_doc, False)
     output_dictionary = {}
     frequency_of_pulser = 1.0 # in seconds
     open_file = ROOT.TFile(run_doc.output_data_file_tier_3.pulser.pfn)
@@ -18,3 +17,5 @@ def update_run_time_for_rundoc(run_doc):
     run_doc.livetime = output_dictionary
     return (run_doc, True)
 
+def get_view():
+    return view_virgin_livetime.get_view_class()

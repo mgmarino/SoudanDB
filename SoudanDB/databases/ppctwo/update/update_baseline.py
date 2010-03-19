@@ -1,11 +1,11 @@
-def update_baseline_for_rundoc(run_doc):
+from ..views import view_baseline_virgin_docs
+import ROOT
+
+def update_rundoc(run_doc):
     """
       Analyzes baseline for a run_doc and returns a dictionary
       which can be used to populate a BaselineDict object
     """
-    import ROOT
-    if run_doc.baseline_dict.chi_square:
-        return (run_doc, False)
 
     return_dict = {} 
     open_file = ROOT.TFile(run_doc.output_data_file_tier_3.low_energy.pfn)
@@ -48,4 +48,5 @@ def update_baseline_for_rundoc(run_doc):
     run_doc.baseline_dict = return_dict
     return (run_doc, True)
        
-
+def get_view():
+    return view_baseline_virgin_docs.get_view_class()
