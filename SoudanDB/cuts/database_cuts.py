@@ -1,4 +1,7 @@
 from ..management.soudan_database import SoudanServer, CutDocumentClass  
+"""
+DEPRECATED
+"""
 class MGCut(object):
     """
     Base class which is inserted into the database.  A later daemon will go

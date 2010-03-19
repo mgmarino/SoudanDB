@@ -7,6 +7,12 @@ import numpy
 
 
 def run_update_calc( server_build, alist, update_rundoc):
+    """
+      server: the method to instantiate a new server.
+              This is important since we are running in a different thread.
+      alist: list of documents to process
+      update_rundoc: passed in method to perform the updating
+    """
     server = server_build()
     for id in alist:
         run_doc = server.get_doc(id)
@@ -60,6 +66,9 @@ def update_calculations_on_database():
         all_lists = [total_list[i::num_cpus] for i in range(num_cpus)]
 
         # ship out to threads
+        # We use a fork because the amount of work done
+        # by the child should be fairly significant, making
+        # the amount of time spent to fork negligible.  FixME?
         thread_list = []
         for alist in all_lists: 
             if len(alist) == 0: continue # Don't send out for 0 length lists
@@ -72,8 +81,10 @@ def update_calculations_on_database():
                 sys.exit(0)
                 # stop here for the child process
 
+        # Wait for worker children to complete
         for thread in thread_list:
             os.waitpid(-1, 0)
+
     if must_cycle:
         print "Some documents were updated, cycling again to resolve all updates"
         update_calculations_on_database()

@@ -1,6 +1,12 @@
 import os
 
 def get_hash_of_file(file, block_size=2**20):
+    """
+      calculated the hash of a file.
+      file: path to file to be hashed
+      block_size: a max block size to read at a time
+        This is useful for dealing with fs limitations
+    """
     import hashlib
     md5 = hashlib.md5()
     open_file = open(file, 'rb')
@@ -11,8 +17,6 @@ def get_hash_of_file(file, block_size=2**20):
         md5.update(data)
     open_file.close()
     return md5.hexdigest()
-
-
 
 def detectCPUs():
  """
@@ -36,6 +40,20 @@ def detectCPUs():
 
 
 class SignalHandler:
+    """
+      Class that handles signals.
+      Set this as a signal handler via:
+
+      sighand = utilities.SignalHandler
+      signal.signal(signal.SIGINT, sighand.exit_handler)
+
+      When the signal is called, it sill set a flag exit_requested
+      which the program can query via:
+
+      sighand.is_exit_requested()
+
+      and then exit nicely.
+    """
     exit_requested = False
     #@classmethod
     def exit_handler(self, signum, frame):

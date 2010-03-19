@@ -5,7 +5,7 @@ from dateutil import tz
 import ROOT
 import glob
 import re
-import pickle
+import cPickle as pickle
 import types
 from ..utilities import utilities
 import os
@@ -14,9 +14,12 @@ from . import ServerSingleton, CurrentDBSingleton
 from ..views import view_database_updated_docs
 from calendar import timegm
 from time import strptime
+from couchdb_extensions import MappingField
 
 local_server = True
 #local_server = False
+
+
 
 def SoudanServer():
     return ServerSingleton.get_server()
@@ -32,13 +35,26 @@ else:
     majorana_db_username = 'ewi'
     majorana_db_password = 'darkma11er'
 
+"""
+    Following are a set of fields set up primarily 
+    for the soudan database.  They encapsulate a 
+    certain type of data
+"""
+
 class RunTimeDict(schema.DictField):
+    """
+      Field to save the run time for a particular run
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           run_seconds = schema.FloatField(),
           run_seconds_error = schema.FloatField()))
 
 class BaselineDict(schema.DictField):
+    """
+      Field to save the the average baseline, and different
+      fit parameters.
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           average_fit_constant=schema.FloatField(),
@@ -51,6 +67,11 @@ class BaselineDict(schema.DictField):
           last_ten_percent_fit_constant_rms=schema.FloatField()))
 
 class CutsDictClass(schema.DictField):
+    """
+      Depracated, will remove.  Serves to encapsulate a cut dictionary
+      describing the cut and how to generate.  This is redundant with
+      MapReduce functionality and so will not be used in the future.
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           description_of_cut=schema.TextField(),
@@ -59,6 +80,11 @@ class CutsDictClass(schema.DictField):
           version_of_cut=schema.TextField() ))
 
 class TriggerDataClass(schema.DictField):
+    """
+      This class keeps track of trigger efficiency data, in
+      particular an erfc function that may be fit to the 
+      efficiency data.  
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           scaling = schema.FloatField(),
@@ -68,6 +94,10 @@ class TriggerDataClass(schema.DictField):
           erfc_function = schema.TextField() ))
 
 class PulserDataClass(schema.DictField):
+    """
+      Keep track of pulser width and mean information.  Can store 
+      pulser parameters with this class.
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           sigma = schema.FloatField(),
@@ -77,18 +107,36 @@ class PulserDataClass(schema.DictField):
 
 
 class QADataClass(schema.DictField):
+    """
+      Quality assurance class, allowing flags to be set based
+      upon whether or not QA has been run.
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           qa_check_process_has_been_run = schema.BooleanField(),
           qa_accept_run = schema.BooleanField()))
 
 class NoiseCheckClass(schema.DictField):
+    """
+      Encapsulates data for a run, saving how many events in 
+      a particular region exists.  This is useful for cutting
+      noisy runs.
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           events_in_region_point6_to_10_keV=schema.IntegerField(),
           events_in_region_10_to_70_keV=schema.IntegerField() ))
 
 class DataFileClass(schema.DictField):
+    """
+      Base class for all data files:
+        lfn: logical file name, where the file exists in relation
+          to a relative base
+        pfn: physical file name, where the file exists.
+        md5hash: a hash calculated to protect against file
+          corruption
+        last_mod_time: last modification time of the file.
+    """
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           pfn = schema.TextField(),
@@ -97,6 +145,11 @@ class DataFileClass(schema.DictField):
           last_mod_time = MGDateTimeFieldClass()  ))
 
 class AllReducedDataFilesClass(schema.DictField):
+    """
+      Encapsulate reduced data file classes.  This class is 
+      depracated.  Instead use MappingField in couchdb_extensions.
+    """
+
     def __init__(self):
         schema.DictField.__init__(self, schema.Schema.build(
           pulser = DataFileClass(),
@@ -104,10 +157,13 @@ class AllReducedDataFilesClass(schema.DictField):
           high_energy = DataFileClass() ))
 
 class MGPickleFieldClass(schema.Field):
-    """Schema for pickled fields."""
+    """
+      Schema for pickled fields, allowing trivial storage of python
+      objects within the database.
+    """
     def _to_python(self, value):
         # Be smart, try to return a function if includes 'def' 
-        temp = pickle.loads(value)
+        temp = pickle.loads(str(value))
         if type(temp) is types.StringType: 
             match_it = re.search('def .*', temp, re.DOTALL) 
             if match_it:
@@ -121,9 +177,24 @@ class MGPickleFieldClass(schema.Field):
     def _to_json(self, value):
         return unicode(pickle.dumps(value,0))
 
+class RiseTimeDataClass(schema.Schema):
+    """
+      Rise-time data cut class.  
+      high_energy_function: Class that responds to Eval (TGraph/TF1) to
+        give an upper limit on rise-time in the high-energy range.
+      low_energy_function: Class that responds to Eval (TGraph/TF1) to
+        give an upper limit on rise-time in the low-energy range.
+    """
+    high_energy_function =  MGPickleFieldClass() 
+    low_energy_function =  MGPickleFieldClass() 
+
+
+
 class MGDateTimeFieldClass(schema.DateTimeField):
     """
     Assumes that we obtain a datetime object
+    Encapsulates a datatime object (i.e. one created using 
+    datetime module to create)
     """   
     def _to_json(self, value):
         # Convert to UTC
@@ -141,7 +212,39 @@ class MGDateTimeFieldClass(schema.DateTimeField):
                 raise ValueError('Invalid ISO date/time %r' % value)
         return value
        
+
 class MGDocumentClass(schema.Document):
+    """ 
+      Base class of all documents in the soudan database
+      Includes utility function:
+
+        update_schema 
+
+      Use this to update a document held in the database to a new
+      schema.  In other words, if the defined schema changes in the 
+      code and the respective object in the database needs to 
+      be updated, call the following like:
+
+      >>> server = couchdb.Server('http://localhost:5984/'
+      >>> db = server['list-tests']
+
+      >>> class TestDoc(MGDocument):
+      ...    title = schema.TextField()
+
+      >>> class TestDocAlt(MGDocument):
+      ...    title = schema.TextField()
+      ...        test_list = schema.ListField(schema.TextField())
+
+      >>> t1 = TestDoc()
+      >>> t1.title = 'Test'
+      >>> t1.store(db)
+
+      >>> t2 = TestDocAlt.load(db, t1.id)
+      >>> t2 = TestDocAlt.update_schema(t2)
+      >>> t2.store(db) # persist back to db
+
+    """ 
+
     @classmethod
     def update_schema(cls, old_doc):
         """
@@ -156,7 +259,7 @@ class MGDocumentClass(schema.Document):
                         try:
                             update_field(field[sub_field], old_field[sub_field])
                         except TypeError:
-                            print sub_field, type(sub_field)
+                            #print sub_field, type(sub_field)
                             field[sub_field] = old_field[sub_field]
             except TypeError: 
                 # this field is non-iterable, return to the calling function 
@@ -173,9 +276,25 @@ class MGDocumentClass(schema.Document):
         return new_doc
 
 class PickleDocumentClass(MGDocumentClass):
+    """
+      Document class for a single pickle field, depracated.
+    """
     pickle = MGPickleFieldClass() 
 
+class RiseTimeCutDocumentClass(MGDocumentClass):
+    """ 
+      Class encapsulating rise-time cuts
+      Uses MappingField to allow dynamic update of key names in 
+      all_rise_cuts.
+    """
+    all_rise_cuts = MappingField( schema.DictField(RiseTimeDataClass ))
+
+
 class CutDocumentClass(MGDocumentClass):
+    """
+      Cut Document class, this class is deprecated.
+      Will be removed. 
+    """
     string_of_cut = schema.TextField()
     verbose_description_of_cut = schema.TextField()
 
@@ -191,10 +310,24 @@ class CutDocumentClass(MGDocumentClass):
         return bool_of_cut
  
 class UpdateDatabaseDocumentClass(MGDocumentClass):
+    """
+      Class saving when the database has been updated.
+      This is useful to save information for external
+      daemons so that they know when the last
+      update has been run.  FixME, use changes feed of
+      couchdb instead of this.
+    """
     time_of_last_update = MGDateTimeFieldClass() 
 
 class SoudanServerClass(couchdb.client.Server):
     
+    """
+      Workhorse class of the entire SoudanDB python package,
+      this class encapsulates a database object.
+      Generally, classes will derive from this class to instantiate
+      their own database.
+
+    """
     def __init__(self, db_name, cuts_db_name, run_doc_class, cut_doc_class=None):
         couchdb.client.Server.__init__(self, majorana_db_server)
         self.resource.http.add_credentials(majorana_db_username, majorana_db_password)
@@ -223,6 +356,11 @@ class SoudanServerClass(couchdb.client.Server):
         return os.path.expanduser("~/Dropbox/SoudanData")
 
     def get_last_update_run(self):
+        """
+          Returns the last time the database was updated.
+          Ret: datetime.datetime object
+          Useful for caching when polling daemons last ran. 
+        """
         view = view_database_updated_docs.get_view_class()
         all_docs = view(self.get_database()) 
         if not all_docs or len(all_docs) == 0:
@@ -235,6 +373,11 @@ class SoudanServerClass(couchdb.client.Server):
         return 0
 
     def set_last_update_run(self, time):
+        """
+          Sets the time the database was updated.
+          time: datetime.datetime object
+          Useful for caching when polling daemons last ran. 
+        """
         view = view_database_updated_docs.get_view_class()
         all_docs = view(self.get_database()) 
         update_doc = None
@@ -251,17 +394,16 @@ class SoudanServerClass(couchdb.client.Server):
 
 
     def get_database(self):
+        """
+          Returns db primitive
+        """
         return self.soudan_db
 
     def get_cuts_database(self):
+        """
+          Returns cut db primitive, deprecated
+        """
         return self.soudan_cuts_db
-
-    def pickle_is_in_database(self, pickle):
-        # Searches for a pickle in the database
-        if self.run_is_in_database(pickle):
-            # This means it's a run document
-            return False
-        return (str(pickle) in self.get_database())
 
     def run_is_in_database(self, run_number):
         try:
@@ -270,8 +412,38 @@ class SoudanServerClass(couchdb.client.Server):
             return False
         return (str(run_number) in self.get_database())
 
+    """
+      Cut document access functions, these are
+      deprecated and will be removed.
+    """
     def cut_is_in_database(self, cut):
         return (str(cut) in self.get_cuts_database())
+
+    def get_cut(self, cut):
+        if self.cut_is_in_database(cut): 
+            return self.cut_doc_class.load(self.get_cuts_database(), str(cut))
+        return None
+
+    def insert_cut(self, cut_doc):
+        if cut_doc:
+            cut_doc.store(self.get_cuts_database())
+
+
+    """
+      Pickle access functions.  Deprecated, these should
+      exist in derived classes.
+    """
+    def pickle_is_in_database(self, pickle):
+        """
+          Checks for a pickle document in the 
+          database.  This is assuming that the
+          pickle has a string name.  Will be removed.
+        """
+        # Searches for a pickle in the database
+        if self.run_is_in_database(pickle):
+            # This means it's a run document
+            return False
+        return (str(pickle) in self.get_database())
 
     def get_pickle(self, pickle):
         if self.pickle_is_in_database(pickle): 
@@ -289,15 +461,6 @@ class SoudanServerClass(couchdb.client.Server):
                 pass
         pickle_doc.store(self.get_database())
 
-    def get_cut(self, cut):
-        if self.cut_is_in_database(cut): 
-            return self.cut_doc_class.load(self.get_cuts_database(), str(cut))
-        return None
-
-    def insert_cut(self, cut_doc):
-        if cut_doc:
-            cut_doc.store(self.get_cuts_database())
-
     def get_doc(self, doc):
         return self.get_run(doc)
 
@@ -314,11 +477,26 @@ class SoudanServerClass(couchdb.client.Server):
         if rundoc:
             rundoc.store(self.get_database())
     
+    """
+      Get Rise-time cut doc for the class
+    """
+    def get_rise_time_cut_doc(self):
+        doc_name = "risetimedoc" 
+        if doc_name not in self.get_database():  
+            doc = RiseTimeCutDocumentClass()
+            doc._set_id(doc_name)
+            self.insert_rundoc(doc)
+        return RiseTimeCutDocumentClass.load(
+                     self.get_database(), doc_name)
+
+    def insert_doc(self, doc):
+        doc.store(self.get_database())
+
     def check_and_update_run(self, run_number):
         """
           Checks to see if a run exists, and updates it if the modification time
           of the local files is more recent than the modification time of the 
-          database document. 
+          database document.  Deprecated, uses views and update database now. 
         """
         run_doc = self.get_run(run_number)
         if not run_doc:
