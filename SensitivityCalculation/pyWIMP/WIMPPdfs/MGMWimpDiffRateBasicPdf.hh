@@ -25,6 +25,7 @@ public:
   virtual TObject* clone(const char* newname) const { return new MGMWimpDiffRateBasicPdf(*this,newname); }
   inline virtual ~MGMWimpDiffRateBasicPdf() { }
   virtual ExtendMode extendMode() const { return MustBeExtended; }
+  using RooAbsPdf::expectedEvents;
   virtual Double_t expectedEvents(const RooArgSet* nset) const 
     { Double_t temp = getNorm(nset); //cout << temp << endl; 
       return temp;}
