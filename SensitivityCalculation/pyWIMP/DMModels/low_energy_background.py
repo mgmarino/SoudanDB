@@ -12,13 +12,16 @@ class FittingModel(BaseModel):
                  use_rel = False,
                  erfc_on = False):
         BaseModel.__init__(self, basevars)
+        self.initialize(basevars)
+
+    def initialize(self, basevars):
         mean_list = [("Ge", 10.367, 0.07, 0.1, 0.02, 0), 
                      ("Ga", 9.659, 0.07, 0.1, 0.04, 0), 
-                     ("Zn", 8.979, 0.07, 0.1, 0.03, 0), 
+                     ("Zn", 8.979, 0.08, 0.1, 0.03, 0), 
                      ("As", 11.103, 0.06, 0.1, 0.02, 0), 
-                     ("Ge-Low", 1.299, 0.0, 0.1, 0.02, 0), 
+                     ("Ge-Low", 1.299, 0.0, 0.1, 0.02, 0)]#, 
                      #("Unknown", 0.9, 0.05, 0.1, 0.04, 0), 
-                     ("ZN-Low", 1.10, 0.0, 0.1, 0.02, 0) ]
+                     #("ZN-Low", 1.10, 0.0, 0.1, 0.02, 0) ]
         
         self.gamma_list = []
         max = basevars.get_energy().getMax()
@@ -34,35 +37,44 @@ class FittingModel(BaseModel):
         self.final_pdf = self.exp_pdf 
         self.added_pdf = self.final_pdf
         self.saved_pdf = [] # Hack to keep this from dying
+        pdf_list = ROOT.RooArgList()
+        coef_list = ROOT.RooArgList()
+        #new_var = ROOT.RooRealVar("background_ampl", 
+        #                          "background_ampl", 
+        #                          0, 10000)
+        #pdf_list.add(self.exp_pdf)
+        #coef_list.add(new_var)
+        #self.saved_pdf.append((self.final_pdf, new_var))
         for _,gamma in self.gamma_list:
             new_var = ROOT.RooRealVar("%s_ampl" % gamma.GetName(), 
                                       "%s_ampl" % gamma.GetName(), 
-                                      0.5, 0, 1)
-            self.saved_pdf.append((self.added_pdf, new_var))
+                                      0, 1)
+            #self.saved_pdf.append((self.added_pdf, new_var))
             name = "%s_%s" % (self.added_pdf.GetName(), gamma.GetName())
+            #pdf_list.add(gamma)
+            #coef_list.add(new_var)
+            #self.saved_pdf.append((gamma, new_var))
+            self.saved_pdf.append((self.added_pdf, new_var))
             self.final_pdf = ROOT.RooAddPdf(name,
                                        name, 
-                                       self.added_pdf, gamma, new_var)
+                                       gamma, self.added_pdf, new_var)
             self.added_pdf = self.final_pdf
+        #self.final_pdf = ROOT.RooAddPdf("final_pdf", "final_pdf",
+        #                                pdf_list, coef_list)
 
-       
     def get_model(self):
         return self.final_pdf
 
 
-class LowEnergyBackgroundModel(BaseModel):
-    def __init__(self, \
-                 basevars,
-                 use_rel = False,
-                 erfc_on = False):
-        BaseModel.__init__(self, basevars)
+class LowEnergyBackgroundModel(FittingModel):
+    def initialize(self, basevars):
         mean_list = [("Ge", 10.367, 0.1, 0.1, 0.02, 0), 
                      ("Ga", 9.659, 0.1, 0.1, 0.02, 0), 
                      ("Zn", 8.979, 0.1, 0.1, 0.02, 0), 
                      ("As", 11.103, 0.1, 0.1, 0.02, 0), 
-                     ("Ge-Low", 1.299, 0.08, 0.1, 0.1, 0), 
+                     ("Ge-Low", 1.299, 0.0, 0.1, 0.1, 0), 
                      #("Unknown", 0.9, 0.05, 0.1, 0.04, 0), 
-                     ("ZN-Low", 1.10, 0.05, 0.1, 0.1, 0) ]
+                     ("ZN-Low", 1.10, 0.0, 0.1, 0.1, 0) ]
         
         self.gamma_list = []
         max = basevars.get_energy().getMax()
@@ -82,16 +94,13 @@ class LowEnergyBackgroundModel(BaseModel):
         for _,gamma in self.gamma_list:
             new_var = ROOT.RooRealVar("%s_ampl" % gamma.GetName(), 
                                       "%s_ampl" % gamma.GetName(), 
-                                      0.5, 0, 1)
+                                      0, 1)
             self.saved_pdf.append((self.added_pdf, new_var))
             name = "%s_%s" % (self.added_pdf.GetName(), gamma.GetName())
             self.final_pdf = ROOT.RooAddPdf(name,
                                        name, 
-                                       self.added_pdf, gamma, new_var)
+                                       gamma, self.added_pdf, new_var)
             self.added_pdf = self.final_pdf
 
        
-    def get_model(self):
-        return self.final_pdf
-
 

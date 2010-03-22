@@ -30,7 +30,6 @@ def job_engine( output_file,\
     in their respective processes. 
     """
 
-    import ROOT
     # Setup: 
     # 
     # Grab the object which will perform the 
@@ -104,6 +103,7 @@ def job_engine( output_file,\
         return
 
     # Save the output to a tree
+    import ROOT
     print "Writing TTree output."
     open_file = ROOT.TFile(output_file, "recreate")
     output_tree = ROOT.TTree("sensitivity_tree", "sensitivity_tree")
@@ -139,9 +139,15 @@ def job_engine( output_file,\
 
     # Now we deal with the list output 
     # it is a dictionary, but we don't know the names, or numbers of entries
-    # each entry's value, though, is a double
+    # each entry's value, 
+    # It is either a ROOT object or a double
     array_dict = {}
-    for key in results_list[0].keys():
+    for key, val in results_list[0].items():
+        #root_object = False
+        #try:
+        #    root_object = val.InheritsFrom(ROOT.TObject.Class())
+        #except AttributeError: pass
+        #if root_object:
         array_dict[key] = array.array('d', [0])
         output_tree.Branch(key, array_dict[key], \
                        "%s/D" % key)
@@ -253,9 +259,10 @@ Calculation:
 
     for key, val in output_dict.items():
         output_string += """
-    %s: %s """ % (req_items[key][0], str(val))
+    %s: %s """ % (req_items[key][0].split('\n')[0], str(val))
 
     output_string += """
+
 Process:
     Using cpu number: %i
     Iterations on each cpu: %i

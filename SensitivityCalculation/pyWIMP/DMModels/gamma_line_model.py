@@ -11,7 +11,7 @@ class GammaLineModel(BaseModel):
 
 
 
-        name = str(self.get_tag()) + str(mean.getVal())
+        name = str(self.get_tag()) + "_" + str(mean.getVal())
         if lifetime:
             name += "_lt_"
             name += str(lifetime.getVal()) 

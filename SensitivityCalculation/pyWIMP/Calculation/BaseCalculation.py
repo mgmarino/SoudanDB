@@ -1,59 +1,68 @@
 import ROOT
+from exceptions import Exception
 class BaseCalculation:
 
     def __init__(self, exit_manager = None):
         self.exit_manager = exit_manager
         self.retry_error = {'again' : True} 
+        self.debug = False
+        self.show_plots = False
+        self.plot_base_name = ""
 
     def is_exit_requested(self):
         if not self.exit_manager: return False
         return self.exit_manager.is_exit_requested()
 
     def set_canvas(self, canv): self.c1 = canv
+    def set_debug(self, set_d = True): self.debug = set_d 
+    def set_print_out_plots(self, set_p = True): 
+        self.print_out_plots = set_p 
+    def set_show_plots(self, set_p = True): 
+        self.show_plots = set_p 
+    def set_plot_base_name(self, name): 
+        self.plot_base_name = name 
 
-    def find_confidence_value_for_model(self, \
-                                        model, \
-                                        data, \
-                                        model_amplitude, \
-                                        conf_level, \
-                                        mult_factor, \
-                                        print_level = -1, \
-                                        verbose = False, \
+    def find_confidence_value_for_model(self, 
+                                        model, 
+                                        data, 
+                                        model_amplitude, 
+                                        conf_level, 
+                                        mult_factor, 
+                                        print_level = -1, 
+                                        verbose = False, 
                                         tolerance = 0.001):
  
         print "Base Class: BaseCalculation being called."
         return None
 
-    def scan_confidence_value_space_for_model(self, \
-                                              model, \
-                                              data_model, \
-                                              model_amplitude, \
-                                              mult_factor,\
-                                              variables, \
-                                              number_of_events,\
-                                              number_iterations, \
-                                              cl,\
-                                              show_plots = False,\
-                                              debug_output = False):
+    def scan_confidence_value_space_for_model(self, 
+                                              model, 
+                                              data_model, 
+                                              model_amplitude, 
+                                              mult_factor,
+                                              variables, 
+                                              number_of_events,
+                                              number_iterations, 
+                                              cl):
     
         print_level = -1
-        verbose = debug_output
-        if debug_output: print_level = 3
+        verbose = self.debug
+        if self.debug: print_level = 3
 
         list_of_values = []
         i = 0
         confidence_value = ROOT.TMath.ChisquareQuantile(cl, 1) 
         while i < number_iterations:
-            if debug_output:
+            if self.debug:
                 print "Process %s: Iteration (%i) of (%i)" \
                     % (os.getpid(), i+1, number_iterations)
             # Generate the data, use Extended flag
             # because the number_of_events is just
             # an expected number.
             model_amplitude.setVal(0)
-            data_set_func = data_model.generate(\
-                variables,\
-                number_of_events, \
+            data_set_func = data_model.generate(
+                variables,
+                number_of_events, 
                 ROOT.RooFit.Extended(True))
     
             if not data_set_func:
@@ -61,12 +70,12 @@ class BaseCalculation:
                 break
             # Perform the fit and find the limits
             get_val = self.find_confidence_value_for_model(
-                model, \
-                data_set_func, \
-                model_amplitude, \
-                confidence_value/2,\
-                mult_factor,\
-                print_level,\
+                model, 
+                data_set_func, 
+                model_amplitude, 
+                confidence_value/2,
+                mult_factor,
+                print_level,
                 verbose) 
     
             if not get_val: 
@@ -82,7 +91,7 @@ class BaseCalculation:
             list_of_values.append(get_val)
             i += 1
     
-            if show_plots:
+            if self.show_plots:
                 var_iter = variables.createIterator()
                 while 1:
                     var_obj = var_iter.Next()

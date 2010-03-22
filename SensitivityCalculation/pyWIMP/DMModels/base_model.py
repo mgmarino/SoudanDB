@@ -36,11 +36,17 @@ class BaseVariables:
 
 class BaseModel:
     class_tag = 0 
+    class_use_tag = False
     def __init__(self,
                  basevars):
         self.basevars = basevars
 
     @classmethod
+    def use_tag(cls, use_it = True):
+        cls.class_use_tag = use_it 
+
+    @classmethod
     def get_tag(cls):
+        if not cls.class_use_tag: return "" 
         cls.class_tag += 1
-        return cls.class_tag
+        return str(cls.class_tag)

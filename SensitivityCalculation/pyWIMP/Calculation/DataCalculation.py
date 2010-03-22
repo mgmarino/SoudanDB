@@ -2,6 +2,7 @@ import ExclusionCalculation
 import ROOT
 import os
 import math
+from exceptions import Exception
 class DataCalculation(ExclusionCalculation.ExclusionCalculation):
 
     """
@@ -28,36 +29,48 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
         nll = model.createNLL(data,
                              ROOT.RooFit.Verbose(verbose))
        
-        model_amplitude.setVal(model_amplitude.getMax())
+        #model_amplitude.setVal(model_amplitude.getMin())
         minuit = ROOT.RooMinuit(nll)
         minuit.migrad()
 
         # Now fit with the model_amplitude
-        while 1:
-            model_amplitude.setConstant(False)
-            minuit.migrad()
-            if math.fabs(model_amplitude.getVal() - model_amplitude.getMin()) < 0.01: 
+        model_amplitude.setConstant(False)
+        minuit.migrad()
+        #while 1:
+        #    model_amplitude.setConstant(False)
+        #    minuit.migrad()
+        #    if math.fabs(model_amplitude.getVal() - model_amplitude.getMin()) < 0.01: 
                 #model_amplitude.setMin(model_amplitude.getMin() - 100)
-                print "model amplitude at lower min, resetting and finding minimum: ", model_amplitude.getMin()
-                break
-            else: break
+        #        print "model amplitude at lower min, resetting and finding minimum: ", model_amplitude.getMin()
+        #        break
+        #    else: break
 
         minimized_value =  model_amplitude.getVal()
         step_size = model_amplitude.getError()
         pll_frac = nll.createProfile(ROOT.RooArgSet(model_amplitude)) 
         pll_frac.getVal()
-        print model_amplitude.getVal()
         
         if conf_level == 0: return None 
         if debug:
-            aframe = model_amplitude.frame(ROOT.RooFit.Bins(40), ROOT.RooFit.Range(minimized_value-40, minimized_value+50))
+            min_value = minimized_value - 20
+            max_value = minimized_value + 40
+            if min_value < 0: min_value = 0
+            aframe = model_amplitude.frame(ROOT.RooFit.Bins(40), 
+                       ROOT.RooFit.Range(min_value, max_value))
             nll.plotOn(aframe, ROOT.RooFit.ShiftToZero())
             pll_frac.plotOn(aframe,ROOT.RooFit.LineColor(5))
             aframe.SetMaximum(2)
             aframe.SetMinimum(-0.5)
+            aframe.SetTitle("%s (LL, Profile LL)" % self.plot_base_name)
             aframe.Draw()
             self.c1.Update()
-            raw_input("Hit Enter to continue")
+            if self.print_out_plots:
+                # HAck!
+                title = aframe.GetTitle()
+                title = title.replace(' ','').replace('(','').replace(')','').replace(',','') 
+                self.c1.Print(title + ".eps")
+            else:
+                raw_input("Hit Enter to continue")
  
         orig_Nll = 0  
         new_minNll = orig_Nll 
@@ -80,8 +93,7 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                 print "PLL negative, discontinuity: " 
                 pll_frac.Print('v')
                 nll.Print('v')
-                raise "PLLDiscontinuityFitException"
-            #print model_amplitude.getVal()
+                raise Exception("PLLDiscontinuityFitException")
             print 
             # Check fit status
                       
@@ -105,9 +117,6 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
            
         # We're done, return results
         if self.is_exit_requested(): return None
-        print model_amplitude.getVal()
-        print mult_factor
-        print model_amplitude.getVal()*mult_factor
         return {'model_amplitude' : model_amplitude.getVal(), 
                 'cross_section' : model_amplitude.getVal()*mult_factor,
                 'orig_min_negloglikelihood' : orig_Nll,
@@ -121,18 +130,17 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                                               variables, 
                                               number_of_events,
                                               number_iterations, 
-                                              cl,
-                                              show_plots = False,
-                                              debug_output = False):
+                                              cl):
     
         print_level = -1
-        verbose = debug_output
-        if debug_output: print_level = 3
+        verbose = self.debug
+        if self.debug: print_level = 3
+        show_plots = self.show_plots or self.print_out_plots
 
         list_of_values = []
         i = 0
         confidence_value = ROOT.TMath.ChisquareQuantile(cl, 1) 
-        if debug_output:
+        if self.debug:
             print "Process %s: Fitting to data." \
                 % (os.getpid())
         # Generate the data, use Extended flag
@@ -158,11 +166,21 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                 aframe = var_obj.frame()
                 ROOT.RooAbsData.plotOn(data_set_func, aframe)
                 model.plotOn(aframe)
-                model.plotOn(aframe, ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
-                model.plotOn(aframe, ROOT.RooFit.Components("simple model"), ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, 
+                             ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), 
+                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, 
+                             ROOT.RooFit.Components("simple model"), 
+                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                aframe.SetTitle("%s (Beginning fit)" % self.plot_base_name)
                 aframe.Draw()
                 self.c1.Update()
-                raw_input("Hit Enter to continue")
+                if self.print_out_plots:
+                    title = aframe.GetTitle()
+                    title = title.replace(' ','').replace('(','').replace(')','').replace(',','') 
+                    self.c1.Print(title + ".eps")
+                else:
+                    raw_input("Hit Enter to continue")
           
 
         # Perform the fit and find the limits
@@ -199,11 +217,20 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                 aframe = var_obj.frame()
                 ROOT.RooAbsData.plotOn(data_set_func, aframe)
                 model.plotOn(aframe)
-                model.plotOn(aframe, ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
-                model.plotOn(aframe, ROOT.RooFit.Components("simple model"), ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, 
+                             ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), 
+                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, ROOT.RooFit.Components("simple model"), 
+                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                aframe.SetTitle("%s (Final fit)" % self.plot_base_name)
                 aframe.Draw()
                 self.c1.Update()
-                raw_input("Hit Enter to continue")
+                if self.print_out_plots:
+                    title = aframe.GetTitle()
+                    title = title.replace(' ','').replace('(','').replace(')','').replace(',','') 
+                    self.c1.Print(title + ".eps")
+                else:
+                    raw_input("Hit Enter to continue")
                 
         return list_of_values
 
