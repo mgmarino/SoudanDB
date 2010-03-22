@@ -61,6 +61,7 @@ AC_DEFUN([ROOT_PATH],
     ROOTGLIBS=`$ROOTCONF --noauxlibs --noldflags --glibs`
     ROOTAUXCFLAGS=`$ROOTCONF --auxcflags`
     ROOTAUXLIBS=`$ROOTCONF --auxlibs`
+    ROOTCXX=`$ROOTCONF --cxx`
     ROOTRPATH=$ROOTLIBDIR
 	
     if test $1 ; then 
@@ -87,6 +88,7 @@ AC_DEFUN([ROOT_PATH],
   AC_SUBST(ROOTAUXLIBS)
   AC_SUBST(ROOTAUXCFLAGS)
   AC_SUBST(ROOTRPATH)
+  AC_SUBST(ROOTCXX)
 
   if test "x$no_root" = "x" ; then 
     ifelse([$2], , :, [$2])     

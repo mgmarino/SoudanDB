@@ -4,7 +4,7 @@
 
 AC_PREREQ(2.50)
 AC_INIT([pyWIMP])
-AC_CONFIG_SRCDIR([pyWIMP/WIMPPdfs//MGMVWimpFormFactor.hh])
+AC_CONFIG_SRCDIR([pyWIMP/WIMPPdfs/MGMVWimpFormFactor.hh])
 
 echo "Run ./configure --help for a list of options"
 echo
@@ -61,6 +61,22 @@ HAS_ROOFIT=`$ROOTCONF --has-roofit`
 if test x"$HAS_ROOFIT" = xno; then
   AC_MSG_ERROR(ROOT not installed with RooFit, please reinstall)
 fi
+CXX=`$ROOTCONF --cxx`
+# Checking which C compiler we are using
+AC_PROG_CXX()
+AC_SUBST(CXX)
+
+# Setting default warning flags.
+WARNINGFLAGS="-W -Wall"
+case "${CXX}" in
+  icc*)
+  # If using icc, remove warning flags.
+  # icc output is otherwise too verbose.
+  WARNINGFLAGS=""
+esac
+
+AC_SUBST(WARNINGFLAGS)
+
 
 #end root
 

@@ -19,7 +19,7 @@ static: ../lib/$(ARCHIVE)
 
 .depend depend: 
 	@echo Checking dependencies...
-	g++ -M $(CXXFLAGS) $(INCLUDEFLAGS) $(SOURCES) > .depend
+	$(CXX) -M $(CXXFLAGS) $(INCLUDEFLAGS) $(SOURCES) > .depend
 
 %.o: %.cc 
 	$(CXX) -c $(CXXFLAGS) $(INCLUDEFLAGS) $< 

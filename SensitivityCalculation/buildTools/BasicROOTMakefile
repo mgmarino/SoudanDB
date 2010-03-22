@@ -35,7 +35,7 @@ static: ../lib/$(ARCHIVE)
 
 .depend depend: $(ROOTDICTCCNAME)
 	@echo Checking dependencies...
-	g++ -M $(CXXFLAGS) $(INCLUDEFLAGS) $(SOURCES) $(ROOTDICTCCNAME) > .depend
+	@$(CXX) -M $(CXXFLAGS) $(INCLUDEFLAGS) $(SOURCES) $(ROOTDICTCCNAME) > .depend
 
 %.o: %.cc 
 	$(CXX) -c $(CXXFLAGS) $(INCLUDEFLAGS) $< 
