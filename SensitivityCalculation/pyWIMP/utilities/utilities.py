@@ -2,6 +2,33 @@ import os
 import math
 
 
+def rescale_frame(canvas, frame, scale, title):
+    """
+    HACK
+    Takes a frame and rescales it to arbitrary coordinates. 
+    This is helpful when dealing with RooPlot to get the axes
+    correct.  Returns axis in case anything else needs to be done.
+    """
+    import ROOT
+    frame.Draw()
+    canvas.Update()
+    frame.GetYaxis().SetTitle("")
+    frame.GetYaxis().SetLabelColor(10)
+    frame.GetYaxis().SetAxisColor(10)
+    max = frame.GetMaximum()
+    min = frame.GetMinimum()
+    new_max = max*scale
+    new_min = min*scale
+    
+    axis = ROOT.TGaxis(canvas.GetUxmin(), canvas.GetUymin(),
+                       canvas.GetUxmin(), canvas.GetUymax(),
+                       new_min,new_max,510,"")
+    axis.SetTitle(title)
+    axis.Draw()
+    canvas.Update()
+    return axis
+
+
 def detectCPUs():
      """
      Detects the number of CPUs on a system. Cribbed from pp.

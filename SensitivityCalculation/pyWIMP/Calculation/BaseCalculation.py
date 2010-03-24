@@ -1,4 +1,6 @@
 import ROOT
+import os
+import sys
 from exceptions import Exception
 class BaseCalculation:
 
@@ -21,6 +23,13 @@ class BaseCalculation:
         self.show_plots = set_p 
     def set_plot_base_name(self, name): 
         self.plot_base_name = name 
+
+    def logging(self, *strings_to_log): 
+        header = "PID(%i), Name(%s): " % (os.getpid(), self.plot_base_name) 
+        for astr in strings_to_log: header += " %s" % str(astr)
+        sys.stdout.write(header)
+        sys.stdout.write('\n')
+        sys.stdout.flush()
 
     def find_confidence_value_for_model(self, 
                                         model, 

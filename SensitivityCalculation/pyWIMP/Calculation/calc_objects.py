@@ -89,7 +89,7 @@ will be displayed during the program.
             self.variables.add(self.basevars.get_energy())
 
         self.model_normal = ROOT.RooRealVar("model_normal", 
-                                            "model_normal", 
+                                            "WIMP event number", 
                                             1, -10, 1000)
         self.wimpClass = WIMPModel(self.basevars,
             mass_of_wimp=self.wimp_mass,
@@ -108,7 +108,7 @@ will be displayed during the program.
         self.is_initialized = True
 
         self.background_normal = ROOT.RooRealVar("flat_normal", \
-                                                 "flat_normal", \
+                                                 "Background event number", \
                                                  self.total_counts, \
                                                  -10,\
                                                  3*self.total_counts)
@@ -218,11 +218,11 @@ This can be a:
 TH1: the bins will be interprected as energy. 
 A RooDataHist will be used to generate a binned fit.  
                                                                 
-TTree: with branches, 'ee_energy', 'time', 'efficiency', plus others.
+TTree: with branches, 'ee_energy', 'time', 'weight', plus others.
 'time' and ee_energy are both optional, it is assumed that if they
 don't exist that time and energy are constant.
-'efficiency' is optional, but when present will adjust the weight of each
-entry to 1/efficiency in the RooDataSet.
+'weight' is optional, but when present will adjust the weight of each
+entry to 'weight' in the RooDataSet.
 A RooDataSet will be used to generate an unbinned fit. 
                                 """, 'output_data')
         adict['data_set_cuts'] = ("""String of cuts to apply. 
@@ -265,7 +265,7 @@ a subset of the TTree and pass into RooDataSet.
             self.basevars.get_energy().setConstant(True)
 
             branches = self.workspace.GetListOfBranches()
-            efficiency = 1.
+            efficiency = "" 
             branch_arg_list = []
 
             for i in range(branches.GetEntries()):
@@ -280,14 +280,15 @@ a subset of the TTree and pass into RooDataSet.
                     self.variables.add(self.basevars.get_time())
                     branch_arg_list.append((self.basevars.get_time(), 
                                             branch_name))
-                elif branch_name == "efficiency":
+                elif branch_name == "weight":
                     efficiency = branch_name 
 
-            if not self.data_set_cuts and not efficiency:
+            if not self.data_set_cuts:
                 # Load the DataSet the easy way
                 self.data_set_model = ROOT.RooDataSet("data", "data", 
                                         self.workspace,
-                                        self.variables)
+                                        self.variables,
+                                        efficiency)
             else:
                 # Otherwise, we have to get the correct events,
                 # which requires stepping through all events
@@ -301,6 +302,7 @@ a subset of the TTree and pass into RooDataSet.
                 while 1: 
                     obj = iter.Next()
                     if not obj: break
+                    if obj.GetTitle() == 'weight': continue
                     cuts += " && ((%s <= %f) && (%s >= %f))" % (obj.GetName(),
                                                                 obj.getMax(),
                                                                 obj.GetName(),
@@ -315,16 +317,17 @@ a subset of the TTree and pass into RooDataSet.
                         eff_val = getattr(self.workspace, efficiency)
                     for val in branch_arg_list: 
                         val[0].setVal(getattr(self.workspace, val[1]))
-                    if eff_val != 0: self.data_set_model.add(self.variables, 1./eff_val)
+                    if eff_val != 0: self.data_set_model.add(self.variables, eff_val)
                      
         else:
             print "Requested: %s, isn't a TTree or TH1!" % self.data_set_name
             raise TypeError
 
+        if self.data_set_model.isWeighted(): print "Data set is weighted"
         print "Data set has %i entries." % self.data_set_model.sumEntries()
 
         self.model_normal = ROOT.RooRealVar("model_normal", 
-                                            "model_normal", 
+                                            "WIMP event number", 
                                             1, 0, 100*self.data_set_model.sumEntries())
         self.wimpClass = WIMPModel(self.basevars,
             mass_of_wimp=self.wimp_mass,
@@ -338,7 +341,7 @@ a subset of the TTree and pass into RooDataSet.
         self.is_initialized = True
 
         self.background_normal = ROOT.RooRealVar("flat_normal", 
-                                                 "flat_normal", 
+                                                 "Background event number", 
                                                  0,
                                                  3)
         self.model_extend = ROOT.RooExtendPdf("model_extend", 
@@ -423,7 +426,7 @@ class OscillationSignalDetection(WIMPModel):
                                 self.signal_percentage)
 
         self.model_normal = ROOT.RooRealVar("model_normal", \
-                                            "model_normal", \
+                                            "WIMP event number", \
                                             self.model_amplitude, \
                                             0, 1)
 

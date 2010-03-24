@@ -9,7 +9,7 @@ from pyWIMP.utilities import utilities
 import array
 import signal
 import errno
-import pickle
+import cPickle as pickle
 
 def job_engine( output_file,\
                 num_cpus, \
@@ -71,12 +71,19 @@ def job_engine( output_file,\
     # Parent only
     # Step 3: Gather, sucking on the pipes until close
     # and waiting for all child processes to clean up 
+    import ROOT
+    ROOT.TTree # This forces the module to be loaded, otherwise there are issues with unpickling.
     results_list = [] 
     for pid, read_pipe in open_threads:
         while 1:
             try:
                 print "Parent (%i) waiting for process: %i" % (os.getpid(), pid)
-                a_list = pickle.loads(read_pipe.read())
+                read_on_pipe = read_pipe.read()
+                try:
+                    a_list = pickle.loads(read_on_pipe)
+                except TypeError:
+                    print read_on_pipe
+                    raise
                 print "Parent (%i) collected for process: %i" % (os.getpid(), pid)
                 break
             except IOError, e:
@@ -102,8 +109,9 @@ def job_engine( output_file,\
         print "No results, exiting."
         return
 
+    ###########################
     # Save the output to a tree
-    import ROOT
+    ###########################
     print "Writing TTree output."
     open_file = ROOT.TFile(output_file, "recreate")
     output_tree = ROOT.TTree("sensitivity_tree", "sensitivity_tree")
@@ -140,21 +148,31 @@ def job_engine( output_file,\
     # Now we deal with the list output 
     # it is a dictionary, but we don't know the names, or numbers of entries
     # each entry's value, 
-    # It is either a ROOT object or a double
+    # It is either a ROOT object or a double, ROOT objects are a little
+    # delicate to deal with.
     array_dict = {}
     for key, val in results_list[0].items():
-        #root_object = False
-        #try:
-        #    root_object = val.InheritsFrom(ROOT.TObject.Class())
-        #except AttributeError: pass
-        #if root_object:
-        array_dict[key] = array.array('d', [0])
-        output_tree.Branch(key, array_dict[key], \
-                       "%s/D" % key)
+        root_object = False
+        try:
+            # Check to see if it's a ROOT object which we can save 
+            # in a branch
+            root_object = val.InheritsFrom(ROOT.TObject.Class())
+        except AttributeError: pass
+        if root_object:
+            array_dict[key] = "root_object"
+            output_tree.Branch(key, val)
+        else:
+            array_dict[key] = array.array('d', [0])
+            output_tree.Branch(key, array_dict[key], "%s/D" % key)
 
+    # No iterating over the results, storing each dictionary in 
+    # the tree.
     for dict in results_list:
         for key in dict.keys():
-            array_dict[key][0] = dict[key]
+            if array_dict[key] == "root_object":
+                output_tree.SetBranchAddress(key, dict[key]) 
+            else:
+                array_dict[key][0] = dict[key]
         output_tree.Fill()
 
     output_tree.Write()

@@ -14,9 +14,11 @@ class BaseVariables:
         self.time = ROOT.RooRealVar("time%s" % tag, "Time",time_beginning,\
                     time_in_years, "years") 
  
-        self.ee_energy = ROOT.RooRealVar("ee_energy%s" % tag, "ee_energy", \
+        self.ee_energy = ROOT.RooRealVar("ee_energy%s" % tag, "Energy", \
                          energy_threshold, energy_max, "keV")
 
+        self.weighting = ROOT.RooRealVar("weight%s" % tag, "Weight", \
+                         0, 1e15)
     @classmethod
     def get_tag(cls):
         cls.class_tag += 1
@@ -28,11 +30,17 @@ class BaseVariables:
     def get_time(self):
         return self.time
 
+    def get_weighting(self):
+        return self.weighting
+
     def set_energy(self, energy):
         self.ee_energy = energy
 
     def set_time(self, time):
         self.time = time
+
+    def set_weighting(self, weighting):
+        self.weighting = weighting
 
 class BaseModel:
     class_tag = 0 
