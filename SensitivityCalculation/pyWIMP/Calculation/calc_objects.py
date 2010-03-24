@@ -38,12 +38,13 @@ will be displayed during the program.
                 'debug' : ('Set debug flag, enables verbose output', False) }
     get_requested_values = classmethod(get_requested_values)
 
-    def __init__(self, \
-                 output_pipe,\
-                 exit_manager,\
-                 num_iterations,\
+    def __init__(self, 
+                 output_pipe,
+                 exit_manager,
+                 num_iterations,
                  input_variables):
 
+        self.input_variables = input_variables
         for akey, val in self.get_requested_values().items():
             aval = val[1]
             if akey in input_variables.keys():
@@ -188,6 +189,7 @@ will be displayed during the program.
         self.calculation_class.set_debug(self.debug)
         self.calculation_class.set_show_plots(self.show_plots)
         self.calculation_class.set_print_out_plots(self.print_out_plots)
+        self.calculation_class.set_input_variables(self.input_variables)
         self.calculation_class.set_plot_base_name(
             "%s WIMP Mass: %g GeV" % (self.__class__.__name__,
                                   self.wimp_mass))

@@ -224,6 +224,15 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
             verbose,
             show_plots) 
 
+        # Looking for whether or not we have info 
+        scaling = 1.
+        axis_title = "Counts/keV"
+        if "mass_of_detector" in self.input_variables.keys()\
+           and "total_time" in self.input_variables.keys():
+            kilos = self.input_variables["mass_of_detector"]
+            time_in_years = self.input_variables["total_time"]
+            scaling = 1./(kilos*time_in_years*365.25)
+            axis_title = "Counts/keV/kg/d"
         if show_plots:
             var_iter = model.getObservables(data_set_func).createIterator()
             while 1:
@@ -233,16 +242,20 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                 ROOT.RooAbsData.plotOn(data_set_func, aframe)
                 model.plotOn(aframe)
                 model.plotOn(aframe, 
-                             ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), 
-                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                     ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), 
+                     ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
                 model.plotOn(aframe, 
-                             ROOT.RooFit.Components("simple model"), 
-                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                     ROOT.RooFit.Components("energy_pdf_*"), 
+                     ROOT.RooFit.LineWidth(4),
+                     ROOT.RooFit.LineStyle(ROOT.RooFit.kDotted),
+                     ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
+                #model.plotOn(aframe, 
+                #             ROOT.RooFit.Components("simple model"), 
+                #             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
                 aframe.SetTitle("%s (Initial fit)" % self.plot_base_name)
                 bin_width = aframe.getFitRangeBinW()
-                axis = rescale_frame(self.c1, aframe, 1./bin_width, "Counts/keV")
+                axis = rescale_frame(self.c1, aframe, scaling/bin_width, axis_title)
                 axis.CenterTitle()
-                aframe.Draw()
                 self.c1.Update()
                 if self.print_out_plots:
                     title = aframe.GetTitle()
@@ -287,12 +300,19 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                 ROOT.RooAbsData.plotOn(data_set_func, aframe)
                 model.plotOn(aframe)
                 model.plotOn(aframe, 
-                             ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), 
-                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
-                model.plotOn(aframe, ROOT.RooFit.Components("simple model"), 
-                             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                     ROOT.RooFit.Components("WIMPPDF_With_Time_And_Escape_Vel"), 
+                     ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, 
+                     ROOT.RooFit.Components("energy_pdf_*"), 
+                     ROOT.RooFit.LineWidth(4),
+                     ROOT.RooFit.LineStyle(ROOT.RooFit.kDotted),
+                     ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
+                #model.plotOn(aframe, ROOT.RooFit.Components("simple model"), 
+                #             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
                 aframe.SetTitle("%s (Final fit)" % self.plot_base_name)
-                aframe.Draw()
+                bin_width = aframe.getFitRangeBinW()
+                axis = rescale_frame(self.c1, aframe, scaling/bin_width, axis_title)
+                axis.CenterTitle()
                 self.c1.Update()
                 if self.print_out_plots:
                     title = aframe.GetTitle()

@@ -10,6 +10,7 @@ class BaseCalculation:
         self.debug = False
         self.show_plots = False
         self.plot_base_name = ""
+        self.input_variables = {}
 
     def is_exit_requested(self):
         if not self.exit_manager: return False
@@ -23,6 +24,9 @@ class BaseCalculation:
         self.show_plots = set_p 
     def set_plot_base_name(self, name): 
         self.plot_base_name = name 
+
+    def set_input_variables(self, input):
+        self.input_variables = input
 
     def logging(self, *strings_to_log): 
         header = "PID(%i), Name(%s): " % (os.getpid(), self.plot_base_name) 
