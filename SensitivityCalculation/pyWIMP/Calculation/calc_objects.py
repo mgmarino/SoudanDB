@@ -6,6 +6,7 @@ import ROOT
 import ExclusionCalculation as ec
 import OscillationSensitivityCalculation as osc
 import DataCalculation as dat
+from  ..utilities.utilities import unroll_RooAbsPdf
 
 class WIMPModel:
     """
@@ -284,6 +285,7 @@ a subset of the TTree and pass into RooDataSet.
                                             branch_name))
                 elif branch_name == "weight":
                     efficiency = branch_name 
+                    self.variables.add(self.basevars.get_weighting())
 
             if not self.data_set_cuts:
                 # Load the DataSet the easy way
@@ -295,7 +297,8 @@ a subset of the TTree and pass into RooDataSet.
                 # Otherwise, we have to get the correct events,
                 # which requires stepping through all events
                 self.data_set_model = ROOT.RooDataSet("data", "data", 
-                                        self.variables)
+                                        self.variables,
+                                        efficiency)
                 # Get an event list with the correct cut events
                 ROOT.gROOT.cd()
                 el = ROOT.TEventList("el", "el")
@@ -367,7 +370,6 @@ a subset of the TTree and pass into RooDataSet.
                                         self.model_extend))
         self.test_variable = self.model_normal
         self.fitting_model = self.added_pdf
-        #getattr(self.workspace, 'import')(self.fitting_model)
         
 
 

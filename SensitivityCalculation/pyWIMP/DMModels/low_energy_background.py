@@ -37,30 +37,17 @@ class FittingModel(BaseModel):
         self.final_pdf = self.exp_pdf 
         self.added_pdf = self.final_pdf
         self.saved_pdf = [] # Hack to keep this from dying
-        pdf_list = ROOT.RooArgList()
-        coef_list = ROOT.RooArgList()
-        #new_var = ROOT.RooRealVar("background_ampl", 
-        #                          "background_ampl", 
-        #                          0, 10000)
-        #pdf_list.add(self.exp_pdf)
-        #coef_list.add(new_var)
-        #self.saved_pdf.append((self.final_pdf, new_var))
         for _,gamma in self.gamma_list:
             new_var = ROOT.RooRealVar("%s_ampl" % gamma.GetName(), 
                                       "%s_ampl" % gamma.GetName(), 
                                       0, 1)
             #self.saved_pdf.append((self.added_pdf, new_var))
             name = "%s_%s" % (self.added_pdf.GetName(), gamma.GetName())
-            #pdf_list.add(gamma)
-            #coef_list.add(new_var)
-            #self.saved_pdf.append((gamma, new_var))
             self.saved_pdf.append((self.added_pdf, new_var))
             self.final_pdf = ROOT.RooAddPdf(name,
                                        name, 
                                        gamma, self.added_pdf, new_var)
             self.added_pdf = self.final_pdf
-        #self.final_pdf = ROOT.RooAddPdf("final_pdf", "final_pdf",
-        #                                pdf_list, coef_list)
 
     def get_model(self):
         return self.final_pdf

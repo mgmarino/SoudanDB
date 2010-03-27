@@ -101,11 +101,14 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
 
         aframe = model_amplitude.frame(ROOT.RooFit.Bins(100), 
                    ROOT.RooFit.Range(min_value, max_range))
+
         nll.plotOn(aframe, ROOT.RooFit.ShiftToZero(), ROOT.RooFit.Name("nll_plot"))
         pll_frac.plotOn(aframe,ROOT.RooFit.LineColor(5), ROOT.RooFit.Name("pll_frac_plot"))
+
         aframe.SetMaximum(2)
         aframe.SetMinimum(-0.5)
         aframe.SetTitle("%s (LL, Profile LL)" % self.plot_base_name)
+
         pll_curve = aframe.getCurve("pll_frac_plot")
         nll_curve = aframe.getCurve("nll_plot")
 
@@ -129,52 +132,7 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
         final_saved_result = model.fitTo(data, ROOT.RooFit.Verbose(verbose), 
                                    ROOT.RooFit.PrintLevel(print_level),
                                    ROOT.RooFit.Save(True))
-        #orig_Nll = 0  
-        #new_minNll = orig_Nll 
-        #if (math.fabs(minimized_value - model_amplitude.getMin())) < 0.2: step_size = 10
-        #model_amplitude.setVal(minimized_value+step_size)
-        
-        #self.logging( "Minimized value: ", minimized_value )
-        #self.logging( "Step size: ", step_size )
-        #number_of_tries = 0
-        
-        #number_of_steps = 0
-        #new_step = 1
-        #original_step_size = step_size
-        #while not self.is_exit_requested():
-        #    #print model_amplitude.getVal()
-        #    temp = pll_frac.getVal() 
-        #    if temp < 0:
-        #        # This is a problem, some discontinuity in the LL space?
-        #        self.logging( "PLL negative, discontinuity: " )
-        #        pll_frac.Print('v')
-        #        nll.Print('v')
-        #        raise Exception("PLLDiscontinuityFitException")
-        #    # Check fit status
-        #              
-        #    distance_traveled = temp - new_minNll
-        #    new_minNll = temp 
-        #    distance_to_go = conf_level - new_minNll
-        #
-        #    # Check results
-        #    if math.fabs(distance_to_go) < tolerance: 
-        #        # We've reached converegence within tolerance, get out
-        #        break
-        #    if distance_traveled == 0: distance_traveled = distance_to_go 
-        #    step_size *= distance_to_go/distance_traveled 
-        #    self.logging( temp, step_size, distance_traveled, distance_to_go, model_amplitude.getVal() )
-        #    model_amplitude.setVal(model_amplitude.getVal() + step_size)
-        #    if model_amplitude.getVal() == model_amplitude.getMax():
-        #        self.logging("Resetting maximum:", model_amplitude.getMax() )
-        #        model_amplitude.setMax(model_amplitude.getVal()*2)
-        #    number_of_steps += 1
-        #    # Trying to avoid getting stuck in a loop.
-        #    if number_of_steps > 50: 
-        #        tolerance *= 2 
-        #        self.logging("Resetting tolerance: ", tolerance)
-        #        number_of_steps = 0
 
-        #   
         ## We're done, return results
         if self.is_exit_requested(): return None
         return {'pll_curve' : pll_curve,
@@ -184,10 +142,6 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                 'initial_fit_result' : initial_saved_result,
                 'model_amplitude' : model_amplitude.getVal(), 
                 'cross_section' : model_amplitude.getVal()*mult_factor}
-        #return {'model_amplitude' : model_amplitude.getVal(), 
-        #        'cross_section' : model_amplitude.getVal()*mult_factor,
-        #        'orig_min_negloglikelihood' : orig_Nll,
-        #        'final_min_negloglikelihood' : new_minNll}
  
     def scan_confidence_value_space_for_model(self, 
                                               model, 
@@ -249,9 +203,10 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                      ROOT.RooFit.LineWidth(4),
                      ROOT.RooFit.LineStyle(ROOT.RooFit.kDotted),
                      ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
-                #model.plotOn(aframe, 
-                #             ROOT.RooFit.Components("simple model"), 
-                #             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, 
+                     ROOT.RooFit.Components("gamma*"), 
+                     ROOT.RooFit.LineWidth(4),
+                     ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
                 aframe.SetTitle("%s (Initial fit)" % self.plot_base_name)
                 bin_width = aframe.getFitRangeBinW()
                 axis = rescale_frame(self.c1, aframe, scaling/bin_width, axis_title)
@@ -307,8 +262,10 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                      ROOT.RooFit.LineWidth(4),
                      ROOT.RooFit.LineStyle(ROOT.RooFit.kDotted),
                      ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
-                #model.plotOn(aframe, ROOT.RooFit.Components("simple model"), 
-                #             ROOT.RooFit.LineStyle(ROOT.RooFit.kDashed))
+                model.plotOn(aframe, 
+                     ROOT.RooFit.Components("gamma*"), 
+                     ROOT.RooFit.LineWidth(4),
+                     ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
                 aframe.SetTitle("%s (Final fit)" % self.plot_base_name)
                 bin_width = aframe.getFitRangeBinW()
                 axis = rescale_frame(self.c1, aframe, scaling/bin_width, axis_title)
