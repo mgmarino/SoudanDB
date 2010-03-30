@@ -5,7 +5,9 @@ import background_model
 import math
 
 def get_sigma(energy_in_eV):
-    return math.sqrt(69.7*69.7 + 2.96*2.96*0.06*energy_in_eV)
+    noise = 70.4843
+    energy_par = 6.49228e-2
+    return math.sqrt(noise*noise + 2.96*2.96*energy_par*energy_in_eV)
 class FittingModel(BaseModel):
     def __init__(self, \
                  basevars,
@@ -15,13 +17,13 @@ class FittingModel(BaseModel):
         self.initialize(basevars)
 
     def initialize(self, basevars):
-        mean_list = [("Ge", 10.367, 0.07, 0.1, 0.02, 0), 
-                     ("Ga", 9.659, 0.07, 0.1, 0.04, 0), 
-                     ("Zn", 8.979, 0.08, 0.1, 0.03, 0), 
-                     ("As", 11.103, 0.06, 0.1, 0.02, 0), 
+        mean_list = [("Ge", 10.367, 0.10, 0.1, 0.04, 0), 
+                     ("Ga", 9.659, 0.10, 0.1, 0.04, 0), 
+                     ("Zn", 8.979, 0.1, 0.1, 0.04, 0), 
+                     ("As", 11.103, 0.1, 0.1, 0.04, 0), 
                      ("Ge-Low", 1.299, 0.0, 0.1, 0.02, 0)]#, 
+                     #("ZN-Low", 1.10, 0.0, 0.1, 0.03, 0) ]
                      #("Unknown", 0.9, 0.05, 0.1, 0.04, 0), 
-                     #("ZN-Low", 1.10, 0.0, 0.1, 0.02, 0) ]
         
         self.gamma_list = []
         max = basevars.get_energy().getMax()
