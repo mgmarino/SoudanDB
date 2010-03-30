@@ -29,8 +29,8 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
         # First ML fit, let everything float
         # Initial fit, this is to get everything in decent
         # areas around the true values.
-        model_amplitude.setConstant(True)
         model_amplitude.setVal(0)
+        model_amplitude.setConstant(True)
         nll = model.createNLL(data,
                              ROOT.RooFit.Verbose(verbose))
        
@@ -43,9 +43,11 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
             expo_const.setConstant(True)
 
         # Now fit with the model_amplitude
+        model_amplitude.setVal(0)
         model_amplitude.setConstant(False)
-        minuit.migrad()
+        #minuit.migrad()
         initial_saved_result = model.fitTo(data, ROOT.RooFit.Verbose(verbose), 
+                                   ROOT.RooFit.SumW2Error(True),
                                    ROOT.RooFit.PrintLevel(print_level),
                                    ROOT.RooFit.Save(True))
         #while 1:
@@ -130,6 +132,7 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
 
         model_amplitude.setConstant(True)
         final_saved_result = model.fitTo(data, ROOT.RooFit.Verbose(verbose), 
+                                   ROOT.RooFit.SumW2Error(True),
                                    ROOT.RooFit.PrintLevel(print_level),
                                    ROOT.RooFit.Save(True))
 
@@ -266,7 +269,9 @@ class DataCalculation(ExclusionCalculation.ExclusionCalculation):
                      ROOT.RooFit.Components("gamma*"), 
                      ROOT.RooFit.LineWidth(4),
                      ROOT.RooFit.LineColor(ROOT.RooFit.kRed))
-                aframe.SetTitle("%s (Final fit)" % self.plot_base_name)
+                aframe.SetTitle("%s (Final fit, %g CL, #sigma: %g pb)" % 
+                                (self.plot_base_name, cl, 
+                                 mult_factor*model_amplitude.getVal()))
                 bin_width = aframe.getFitRangeBinW()
                 axis = rescale_frame(self.c1, aframe, scaling/bin_width, axis_title)
                 axis.CenterTitle()

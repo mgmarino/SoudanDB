@@ -331,15 +331,17 @@ a subset of the TTree and pass into RooDataSet.
         if self.data_set_model.isWeighted(): print "Data set is weighted"
         print "Data set has %i entries." % self.data_set_model.sumEntries()
 
+        # The following has not been normalized to per-nucleon yet.
         self.model_normal = ROOT.RooRealVar("model_normal", 
-                                            "WIMP event number", 
-                                            1, 0, 100*self.data_set_model.sumEntries())
+                                            "WIMP-nucleus xs", 
+                                            1, 0, 100*self.data_set_model.sumEntries(), 
+                                            "pb")
         self.wimpClass = WIMPModel(self.basevars,
             mass_of_wimp=self.wimp_mass,
             kilograms = self.mass_of_detector,
             constant_quenching=(not self.variable_quenching))
 
-        # This is where we define our models
+        # This is where we define our model
         self.model = self.wimpClass.get_model()
         #self.model = self.wimpClass.get_simple_model()
         self.norm = self.wimpClass.get_normalization().getVal()
