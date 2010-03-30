@@ -9,23 +9,23 @@ class WIMPModel(BaseModel):
                  constant_quenching=True):
         # Normally, we don't want to do this, but this keeps 
         # it from importing this module until the last moment.
-        BaseModel.__init__(self, basevars)
         import pyWIMP.WIMPPdfs as pdfs  
+        BaseModel.__init__(self, basevars)
 
         # constant quenching
         if constant_quenching:
             self.quenching = ROOT.RooRealVar("quenching", "quenching", 0.2)
             self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
                               "1./@0", ROOT.RooArgList(self.quenching))
-            self.energy = ROOT.RooFormulaVar("energy", "Energy", \
+            self.recoil_energy = ROOT.RooFormulaVar("energy", "Energy", \
                           "@0/@1", ROOT.RooArgList(basevars.get_energy(), \
                           self.quenching))
         else:
-            self.energy = ROOT.RooFormulaVar("energy", "Energy", \
-                          "TMath::Power(@0/0.14,0.840336)", \
+            self.recoil_energy = ROOT.RooFormulaVar("energy", "Energy", \
+                          "4.03482*TMath::Power(@0,0.880165)", \
                           ROOT.RooArgList(basevars.get_energy()))
             self.dQ_over_dE = ROOT.RooFormulaVar("dQ_over_dE", "#frac{dQ}{dE}",\
-                              "4.38523*TMath::Power(@0, -0.1596638655)", \
+                              "3.55131*TMath::Power(@0, -0.119835)", \
                               ROOT.RooArgList(basevars.get_energy()))
 
         self.kilograms = ROOT.RooRealVar("kilograms", "kilograms", \
@@ -56,7 +56,7 @@ class WIMPModel(BaseModel):
         # Following is for the Form Factors
         self.q = ROOT.RooFormulaVar("q", "Momentum Transfer",\
                    "sqrt(2*@0*@1)/197.3", ROOT.RooArgList(\
-                   self.energy, self.mass_of_target))
+                   self.recoil_energy, self.mass_of_target))
         self.q.setUnit("fm^-1")
 
         self.r_sub_n = ROOT.RooFormulaVar("r_sub_n", "Effective Nuclear Radius",\
@@ -144,13 +144,12 @@ class WIMPModel(BaseModel):
         self.v_sub_min = ROOT.RooFormulaVar("v_sub_min", \
                     "Minimum Velocity of Minimum Energy", \
                     "sqrt(@0/(@1*@2))*@3", \
-                    ROOT.RooArgList(self.energy, self.E_sub_0, self.r,\
+                    ROOT.RooArgList(self.recoil_energy, self.E_sub_0, self.r,\
                                     self.v_sub_0))
         self.v_sub_min.setUnit( self.speed_of_light.getUnit() )
         
         # Woods-Saxon/Helm
-        # The crazy expansion is to deal with poor numerical estimates below a certain
-        # value
+        # This is the form-factor we use.
         self.woods_saxon_helm_ff_squared = pdfs.MGMWimpHelmFFSquared(\
           "woods_saxon_helm_ff_squared",\
           "Helm FF^{2} ",\
@@ -161,7 +160,7 @@ class WIMPModel(BaseModel):
           "exponential_ff_squared",\
           "Exponential Form Factor squared",\
           "exp(-@0/@1)",\
-          ROOT.RooArgList(self.energy, self.q_sub_0))
+          ROOT.RooArgList(self.recoil_energy, self.q_sub_0))
 
        
         self.final_function = pdfs.MGMWimpDiffRatePdf("WIMPPDF_With_Time", \
@@ -191,7 +190,7 @@ class WIMPModel(BaseModel):
                          "Lewin/Smith simple model",
                          self.R_sub_0,
                          self.E_sub_0,
-                         self.energy,
+                         self.recoil_energy,
                          self.r)#,
                          #self.woods_saxon_helm_ff_squared)
 
@@ -199,9 +198,6 @@ class WIMPModel(BaseModel):
        
     def get_simple_model(self):
         return self.simple_model
-
-    def get_velocity_earth(self):
-        return self.v_sub_E
 
     def get_normalization(self):
         return self.normalization
