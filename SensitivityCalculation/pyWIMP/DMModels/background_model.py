@@ -9,7 +9,7 @@ class FlatWithExponentialModel(BaseModel):
         tag = str(self.get_tag())
         self.exp_constant = ROOT.RooRealVar("expo_const_%s" % tag,
                                             "expo_const_%s" % tag,
-                                            -4, 0.5)
+                                            -5, -0.5)
         self.exp_constant_time = ROOT.RooRealVar("expo_const_time_%s" % tag,
                                             "expo_const_time_%s" % tag,
                                             -0.2, -1, 0.5)
