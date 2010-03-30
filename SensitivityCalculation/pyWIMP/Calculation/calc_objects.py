@@ -109,24 +109,24 @@ will be displayed during the program.
         self.norm = self.wimpClass.get_normalization().getVal()
         self.is_initialized = True
 
-        self.background_normal = ROOT.RooRealVar("flat_normal", \
-                                                 "Background event number", \
-                                                 self.total_counts, \
-                                                 -10,\
+        self.background_normal = ROOT.RooRealVar("flat_normal", 
+                                                 "Background event number", 
+                                                 self.total_counts, 
+                                                 -10,
                                                  3*self.total_counts)
-        self.background_extend = ROOT.RooExtendPdf("background_extend", \
-                                                   "background_extend", \
-                                                   self.background_model, \
+        self.background_extend = ROOT.RooExtendPdf("background_extend", 
+                                                   "background_extend", 
+                                                   self.background_model, 
                                                    self.background_normal)
-        self.model_extend = ROOT.RooExtendPdf("model_extend", \
-                                               "model_extend", \
-                                               self.model, \
+        self.model_extend = ROOT.RooExtendPdf("model_extend", 
+                                               "model_extend", 
+                                               self.model, 
                                                self.model_normal)
 
-        self.added_pdf = ROOT.RooAddPdf("b+s", \
-                                        "Background + Signal", \
-                                        ROOT.RooArgList(\
-                                        self.background_extend, \
+        self.added_pdf = ROOT.RooAddPdf("b+s", 
+                                        "Background + Signal", 
+                                        ROOT.RooArgList(
+                                        self.background_extend, 
                                         self.model_extend))
  
         self.test_variable = self.model_normal
@@ -393,9 +393,9 @@ class OscillationSignalDetection(WIMPModel):
         from pyWIMP.DMModels.base_model import BaseVariables
         from pyWIMP.DMModels.flat_model import FlatModel
         from pyWIMP.DMModels.oscillation_model import OscillationModel
-        self.basevars = BaseVariables(time_beginning=0,\
-            time_in_years=self.total_time,\
-            energy_threshold=self.threshold,\
+        self.basevars = BaseVariables(time_beginning=0,
+            time_in_years=self.total_time,
+            energy_threshold=self.threshold,
             energy_max=self.energy_max)
 
         self.oscClass = OscillationModel(self.basevars)
@@ -421,35 +421,35 @@ class OscillationSignalDetection(WIMPModel):
         
         if self.model_amplitude > 1: self.model_amplitude = 1
         elif self.model_amplitude < 0: self.model_amplitude = 0
-        self.signal_percentage = ROOT.RooRealVar("signal_percentage", \
-                                            "signal_percentage", \
+        self.signal_percentage = ROOT.RooRealVar("signal_percentage", 
+                                            "signal_percentage", 
                                             self.model_amplitude)
-        self.background_model = ROOT.RooAddPdf(\
-                                "background",\
-                                "Data Model",\
-                                self.model,\
-                                self.background,\
+        self.background_model = ROOT.RooAddPdf(
+                                "background",
+                                "Data Model",
+                                self.model,
+                                self.background,
                                 self.signal_percentage)
 
-        self.model_normal = ROOT.RooRealVar("model_normal", \
-                                            "WIMP event number", \
-                                            self.model_amplitude, \
+        self.model_normal = ROOT.RooRealVar("model_normal", 
+                                            "model_normal", 
+                                            self.model_amplitude, 
                                             0, 1)
 
-        self.total_fit_counts = ROOT.RooRealVar("total_fit_counts", \
-                                            "total_fit_counts", \
-                                            self.total_counts, \
+        self.total_fit_counts = ROOT.RooRealVar("total_fit_counts", 
+                                            "total_fit_counts", 
+                                            self.total_counts, 
                                             0, 3*self.total_counts)
-        self.added_pdf = ROOT.RooAddPdf(\
-                                "added_pdf",\
-                                "Fit Model",\
-                                self.model,\
-                                self.background,\
+        self.added_pdf = ROOT.RooAddPdf(
+                                "added_pdf",
+                                "Fit Model",
+                                self.model,
+                                self.background,
                                 self.model_normal)
 
-        self.model_extend = ROOT.RooExtendPdf("model_extend",\
-                                              "Signal + Background",\
-                                              self.added_pdf,\
+        self.model_extend = ROOT.RooExtendPdf("model_extend",
+                                              "Signal + Background",
+                                              self.added_pdf,
                                               self.total_fit_counts)
 
         self.test_variable = self.model_normal
