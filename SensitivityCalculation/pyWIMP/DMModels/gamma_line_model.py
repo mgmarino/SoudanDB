@@ -17,11 +17,11 @@ class GammaLineModel(BaseModel):
             name += str(lifetime.getVal()) 
        
 	    # Gamma pdf
+        self.energy_pdf = ROOT.RooGaussian("gamma_line_%s" % name, 
+                                           "GammaPdf_%s" % name, 
+                                           basevars.get_energy(),
+                                           mean, sigma)
         if not lifetime:
-            self.energy_pdf = ROOT.RooGaussian("gamma_line_%s" % name, 
-                                               "GammaPdf_%s" % name, 
-                                               basevars.get_energy(),
-                                               mean, sigma)
             self.gamma_pdf = self.energy_pdf
         if lifetime:
             self.local_lifetime = ROOT.RooFormulaVar(

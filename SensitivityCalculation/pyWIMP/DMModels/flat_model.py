@@ -8,14 +8,14 @@ class FlatModel(BaseModel):
 
         # Flat pdf
         tag = self.get_tag()
-        self.time_pdf = ROOT.RooPolynomial("time_pdf_%i" % tag, \
-                                           "time_pdf_%i" % tag, \
+        self.time_pdf = ROOT.RooPolynomial("time_pdf_%s" % tag, \
+                                           "time_pdf_%s" % tag, \
                                            basevars.get_time())
-        self.energy_pdf = ROOT.RooPolynomial("energy_pdf_%i" % tag, \
-                                             "energy_pdf_%i" % tag, \
+        self.energy_pdf = ROOT.RooPolynomial("energy_pdf_%s" % tag, \
+                                             "energy_pdf_%s" % tag, \
                                              basevars.get_energy())
-        self.flat_pdf = ROOT.RooProdPdf("time_and_energy_pdf_%i" % tag, \
-                                        "time_and_energy_pdf_%i" % tag, \
+        self.flat_pdf = ROOT.RooProdPdf("time_and_energy_pdf_%s" % tag, \
+                                        "time_and_energy_pdf_%s" % tag, \
                                         self.time_pdf, \
                                         self.energy_pdf)
 
