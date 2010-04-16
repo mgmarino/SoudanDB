@@ -6,3 +6,4 @@
 #pragma link C++ class MGMWimpTimeFunction+;
 #pragma link C++ class MGMPiecewiseFunction+;
 #pragma link C++ class MGMErfcFunction+;
+#pragma link C++ class MGMPolyPlusExponential+;
