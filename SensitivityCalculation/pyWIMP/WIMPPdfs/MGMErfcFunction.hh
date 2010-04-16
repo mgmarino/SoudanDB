@@ -7,27 +7,33 @@
 #ifndef _MGMErfcFunction_hh_
 #define _MGMErfcFunction_hh_
 
-#include "RooAbsReal.h"
+#include "RooAbsPdf.h"
 #include "RooRealProxy.h"
+#include "TMath.h"
  
-class MGMErfcFunction : public RooAbsReal {
+class MGMErfcFunction : public RooAbsPdf {
 public:
   MGMErfcFunction() {} ; 
   MGMErfcFunction(const char *name, const char *title,
 	      RooAbsReal& _energy,
 	      RooAbsReal& _mean,
-	      RooAbsReal& _sigma);
+	      RooAbsReal& _sigma,
+	      RooAbsReal& _offset);
   MGMErfcFunction(const MGMErfcFunction& other, const char* name=0) ;
   virtual TObject* clone(const char* newname) const { return new MGMErfcFunction(*this,newname); }
   inline virtual ~MGMErfcFunction() { }
 
+  Int_t getAnalyticalIntegral(RooArgSet& allVars, RooArgSet& analVars, const char* /*rangeName*/) const;
+  Double_t analyticalIntegral(Int_t code, const char* rangeName) const;
 protected:
 
   RooRealProxy fEnergy ;
   RooRealProxy fMean ;
   RooRealProxy fSigma ;
+  RooRealProxy fOffset ;
   
   Double_t evaluate() const ;
+  Double_t integralEvaluateAt(Double_t value) const;
 
 private:
 
