@@ -100,6 +100,7 @@ Double_t MGMWimpDiffRatePdf::FindPrecisionCutoff()
 
  Double_t MGMWimpDiffRatePdf::evaluate() const
 {
-  return EvaluateFormFactor()*EvaluatePDF();
+  Double_t func = EvaluateFormFactor()*EvaluatePDF();
+  return ( func < 1e-15 ) ? 1e-15 : func;
 }
 

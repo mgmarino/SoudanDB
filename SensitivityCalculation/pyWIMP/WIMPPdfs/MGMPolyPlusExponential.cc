@@ -35,8 +35,9 @@
 
  Double_t MGMPolyPlusExponential::evaluate() const 
  { 
-   Double_t func = (1 - fExpRelativeContent) + fExpRelativeContent*exp(fExpRelativeContent*fExpConstant*fEnergy);
-   return ( func > 1e-15 ? func : 1e-15 );
+   Double_t func = fExpRelativeContent + (1-fExpRelativeContent)*exp(-fExpConstant*fEnergy);
+   //return ( func > 1e-15 ? func : 1e-15 );
+   return func;
  } 
 
 Int_t MGMPolyPlusExponential::getAnalyticalIntegral(RooArgSet& allVars, RooArgSet& analVars, const char* /*rangeName*/) const
@@ -48,7 +49,7 @@ Int_t MGMPolyPlusExponential::getAnalyticalIntegral(RooArgSet& allVars, RooArgSe
 Double_t MGMPolyPlusExponential::integralEvaluateAt(Double_t value) const
 {
 
-   Double_t func = (1 - fExpRelativeContent)*value + exp(fExpRelativeContent*fExpConstant*value)/fExpConstant;
+   Double_t func = fExpRelativeContent*value - exp(-fExpConstant*value)*(1-fExpRelativeContent)/fExpConstant;
    return func;
 }
 
