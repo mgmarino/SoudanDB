@@ -70,6 +70,7 @@ clean:
 	@rm -f $(SHLIB) $(ARCHIVE) $(ROOTDICTCCNAME) $(ROOTDICTHHNAME) *.o *~ .depend
 	@rm -f ../lib/$(SHLIB)
 	@rm -f ../lib/$(ARCHIVE)
+	@rm -f ../lib/*.so
 	@rm -f $(TRANSFORMSCC) $(TRANSFORMSHH)
 
 ifneq ($(MAKECMDGOALS),clean)
