@@ -43,7 +43,7 @@
           getK0OverK1()*( MGMWimpDiffRatePdf::EvaluatePDF() - 
           (R_sub_0/(E_sub_0*r))*
           TMath::Exp(-TMath::Power(v_sub_esc/v_sub_0,2)) );
-   return (temp > 0) ? temp : 0.0;
+   return temp; 
  } 
 
  Double_t MGMWimpDiffRateEscapeVelPdf::getK0OverK1() const 
