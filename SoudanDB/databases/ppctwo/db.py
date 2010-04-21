@@ -3,7 +3,9 @@ from SoudanDB.management.soudan_database import RunTimeDict, DataFileClass, \
      NoiseCheckClass, MGDateTimeFieldClass, PulserDataClass, CutsDictClass,\
      SoudanServerClass, MGDocumentClass 
 from views import view_all_accepted_runs, view_livetime_all_accepted_runs,\
-                  view_files_of_accepted_runs, view_starttime_all_accepted_runs
+                  view_files_of_accepted_runs, view_starttime_all_accepted_runs,\
+                  view_noise_events, view_files_baseline_of_accepted_runs,\
+                  view_efficiency_data
 from couchdb import schema
 import os
 soudan_db_name = 'soudan_db'
@@ -53,19 +55,34 @@ class PPCTwoDB(SoudanServerClass):
         return view(self.get_database())
 
     def get_lfn_path(self):   
-        return os.path.expanduser("~/Dropbox/SoudanData/PPC2")
+        return os.path.expanduser("~/SoudanDataLocal/PPC2")
 
     def get_starttime_of_runs(self):
         view = view_starttime_all_accepted_runs.get_view_class()
         return view(self.get_database())
 
+    def get_efficiency_data(self):
+        view = view_efficiency_data.get_view_class()
+        return view(self.get_database())
+
+
     def get_livetime_of_runs(self):
         view = view_livetime_all_accepted_runs.get_view_class()
         return view(self.get_database())
 
+    def get_noise_events(self):
+        view = view_noise_events.get_view_class()
+        return view(self.get_database())
+
+
     def get_files_of_runs(self):
         view = view_files_of_accepted_runs.get_view_class()
         return view(self.get_database())
+
+    def get_files_baseline_of_runs(self):
+        view = view_files_baseline_of_accepted_runs.get_view_class()
+        return view(self.get_database())
+
 
 
 class RunDocumentClass(MGDocumentClass):

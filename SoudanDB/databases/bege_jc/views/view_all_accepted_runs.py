@@ -14,10 +14,6 @@ function(doc) {
        if (int_of_doc_id < 20091204180000) {
          return;
        }
-       // choose a date to analyze until.
-       if (int_of_doc_id > 20100201000000) {
-         return;
-       }
        // Juan ran a calibration run on the 17th of Dec, from his email:
        //Mike, you'll notice the file today at 12:31 is large. We performed a
        //scanning pulser calibration extending all the way out to the maximum
@@ -26,6 +22,17 @@ function(doc) {
        //in energy)
        if (int_of_doc_id == 20091217123128 ||
            int_of_doc_id == 20091217123841) {
+         return;
+       }
+       // Detector put to sleep for power outage, down a week
+       if (int_of_doc_id > 20100315120053 &&
+           int_of_doc_id < 20100319180006) {
+         return;
+       }
+
+       // choose a date to analyze until.
+       //if (int_of_doc_id > 20100401000000) {
+       if (int_of_doc_id > 20100201000000) {
          return;
        }
        emit(parseInt(doc._id), [doc.output_data_file_tier_2.lfn,

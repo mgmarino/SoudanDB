@@ -6,6 +6,11 @@ def get_view_class():
        if(!(doc.quality_assurance.qa_check_process_has_been_run && doc.quality_assurance.qa_accept_run)) {
          return;
        }
-       emit(parseInt(doc._id), [doc.output_data_file_tier_3.high_energy.lfn, doc.output_data_file_tier_3.low_energy.lfn]); 
+       emit(parseInt(doc._id), 
+         [doc.output_data_file_tier_3.high_energy.lfn, 
+          doc.output_data_file_tier_3.low_energy.lfn,
+          doc.output_data_file_tier_2.pfn, 
+          doc.root_data_file_tier_1.pfn 
+          ]); 
      }
     ''')

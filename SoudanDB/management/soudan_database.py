@@ -177,7 +177,18 @@ class MGPickleFieldClass(schema.Field):
     def _to_json(self, value):
         return unicode(pickle.dumps(value,0))
 
-class RiseTimeDataClass(schema.Schema):
+class CutDataClass(schema.Schema):
+    """
+      This class encapsulates data for a cut, returning the efficiency
+      of the cut.  Derived classes are in charge of defining the 
+      actual cut values, this class defines the efficiency of the cut.  
+      All pickled data members should be TF1s or at least objects
+      that respond to 'Eval'.
+    """
+    efficiency_function = MGPickleFieldClass()
+
+
+class RiseTimeDataClass(CutDataClass):
     """
       Rise-time data cut class.  
       high_energy_function: Class that responds to Eval (TGraph/TF1) to
@@ -185,8 +196,19 @@ class RiseTimeDataClass(schema.Schema):
       low_energy_function: Class that responds to Eval (TGraph/TF1) to
         give an upper limit on rise-time in the low-energy range.
     """
-    high_energy_function =  MGPickleFieldClass() 
+    high_energy_function =  MGPickleFieldClass()
     low_energy_function =  MGPickleFieldClass() 
+
+class MicrophonicsCutDataClass(CutDataClass):
+    """
+      Microphonics data cut class.  
+      upper_cut: Class that responds to Eval (TGraph/TF1) to
+        give an upper limit on ratios. 
+      lower_cut: Class that responds to Eval (TGraph/TF1) to
+        give an lower limit on chan0/chan1 ratio. 
+    """
+    upper_cut =  MGPickleFieldClass() 
+    lower_cut =  MGPickleFieldClass() 
 
 
 
@@ -281,34 +303,32 @@ class PickleDocumentClass(MGDocumentClass):
     """
     pickle = MGPickleFieldClass() 
 
+class TriggerEfficiencyDocumentClass(MGDocumentClass):
+    """ 
+      Class encapsulating trigger efficiency cuts
+    """
+    trigger_efficiency = MappingField( schema.DictField(CutDataClass ))
+
+class MicrophonicsCutDocumentClass(MGDocumentClass):
+    """ 
+      Class encapsulating microphonics cuts
+      Uses MappingField to allow dynamic update of key names in 
+      all_rise_cuts.  That is, we can define a key naming different
+      cuts.
+    """
+    all_micro_cuts = MappingField( schema.DictField(MicrophonicsCutDataClass ))
+
+
 class RiseTimeCutDocumentClass(MGDocumentClass):
     """ 
       Class encapsulating rise-time cuts
       Uses MappingField to allow dynamic update of key names in 
-      all_rise_cuts.
+      all_rise_cuts.  That is, we can define a key naming different
+      cuts.
     """
     all_rise_cuts = MappingField( schema.DictField(RiseTimeDataClass ))
 
 
-class CutDocumentClass(MGDocumentClass):
-    """
-      Cut Document class, this class is deprecated.
-      Will be removed. 
-    """
-    string_of_cut = schema.TextField()
-    verbose_description_of_cut = schema.TextField()
-
-    def generate_cut_for_run_doc(self, run_doc):
-        # setting up the dynamic running later.
-        import math
-        import ROOT
-        for item in run_doc:
-            if hasattr(run_doc, item):
-                exec("%s = run_doc.%s" % (str(item), str(item)))
-        _id = run_doc._get_id()
-        bool_of_cut = eval(self.string_of_cut)
-        return bool_of_cut
- 
 class UpdateDatabaseDocumentClass(MGDocumentClass):
     """
       Class saving when the database has been updated.
@@ -318,6 +338,18 @@ class UpdateDatabaseDocumentClass(MGDocumentClass):
       couchdb instead of this.
     """
     time_of_last_update = MGDateTimeFieldClass() 
+
+class EnergyCalibrationDocumentClass(MGDocumentClass):
+    """
+      Class saving information regarding energy
+      calibration.  For example, the energy_calibration
+      field should store an object which can return
+      an energy value.  In practice one could 
+      decide that this is a ROOT object, like TF1
+      or TGraph, but this is up to the implementation.
+      
+    """
+    energy_calibration = MGPickleFieldClass()
 
 class SoudanServerClass(couchdb.client.Server):
     
@@ -336,7 +368,6 @@ class SoudanServerClass(couchdb.client.Server):
             print "Database created."
         else:
             self.soudan_db = self[db_name]
-            print "Database found."
 
         if cuts_db_name:
             if cuts_db_name not in self:
@@ -344,12 +375,13 @@ class SoudanServerClass(couchdb.client.Server):
                 print "Cuts database created."
             else:
                 self.soudan_cuts_db = self[cuts_db_name]
-                print "Cuts database found."
         
+        """
         if not cut_doc_class:
-            self.cut_doc_class = CutDocumentClass
+            self.cut_doc_class = TriggerEfficiencyDocumentClass
         else:
             self.cut_doc_class = cut_doc_class
+        """
         self.run_doc_class = run_doc_class
         
     def get_lfn_path(self):   
@@ -478,7 +510,7 @@ class SoudanServerClass(couchdb.client.Server):
             rundoc.store(self.get_database())
     
     """
-      Get Rise-time cut doc for the class
+      Get Rise-time cut doc for the server
     """
     def get_rise_time_cut_doc(self):
         doc_name = "risetimedoc" 
@@ -488,6 +520,43 @@ class SoudanServerClass(couchdb.client.Server):
             self.insert_rundoc(doc)
         return RiseTimeCutDocumentClass.load(
                      self.get_database(), doc_name)
+
+    """
+      Get microphonics cut doc for the server
+    """
+    def get_microphonics_cut_doc(self):
+        doc_name = "microdoc" 
+        if doc_name not in self.get_database():  
+            doc = MicrophonicsCutDocumentClass()
+            doc._set_id(doc_name)
+            self.insert_rundoc(doc)
+        return MicrophonicsCutDocumentClass.load(
+                     self.get_database(), doc_name)
+
+    """
+      Get trigger efficiency for the server
+    """
+    def get_trigger_efficiency_doc(self):
+        doc_name = "triggerdoc" 
+        if doc_name not in self.get_database():  
+            doc = TriggerEfficiencyDocumentClass()
+            doc._set_id(doc_name)
+            self.insert_rundoc(doc)
+        return TriggerEfficiencyDocumentClass.load(
+                     self.get_database(), doc_name)
+
+    """
+      Get energy calibration for the server 
+    """
+    def get_energy_calibration_doc(self):
+        doc_name = "energy_calibration_doc" 
+        if doc_name not in self.get_database():  
+            doc = EnergyCalibrationDocumentClass()
+            doc._set_id(doc_name)
+            self.insert_rundoc(doc)
+        return EnergyCalibrationDocumentClass.load(
+                     self.get_database(), doc_name)
+
 
     def insert_doc(self, doc):
         doc.store(self.get_database())
