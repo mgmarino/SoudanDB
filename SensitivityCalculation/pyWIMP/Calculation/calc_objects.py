@@ -215,6 +215,7 @@ class DataExclusion(WIMPModel):
         del adict['constant_time']
         del adict['background_rate']
         adict['data_file'] = ('Name of data root file', 'temp.root')
+        adict['number_of_bins'] = ('Number of bins to use.  0 means un-binned.  [default 0]', 0)
         adict['object_name'] = ("""Name of object inside data file. 
 This can be a:                                             
                                                                 
@@ -266,6 +267,9 @@ a subset of the TTree and pass into RooDataSet.
             self.basevars.get_time().setConstant(True)
             self.basevars.get_energy().setVal(0)
             self.basevars.get_energy().setConstant(True)
+            if self.number_of_bins != 0:
+                self.basevars.get_energy().setBins(int(self.number_of_bins))
+                self.basevars.get_time().setBins(int(self.number_of_bins))
 
             branches = self.workspace.GetListOfBranches()
             efficiency = "" 
@@ -328,6 +332,10 @@ a subset of the TTree and pass into RooDataSet.
             print "Requested: %s, isn't a TTree or TH1!" % self.data_set_name
             raise TypeError
 
+        if self.number_of_bins != 0:
+            self.original_data_set = self.data_set_model
+            self.data_set_model = self.original_data_set.binnedClone()
+
         if self.data_set_model.isWeighted(): print "Data set is weighted"
         print "Data set has %i entries." % self.data_set_model.sumEntries()
 
@@ -360,16 +368,35 @@ a subset of the TTree and pass into RooDataSet.
             dat.DataCalculation(self.exit_manager)
         self.low_energy = LowEnergyBackgroundModel(self.basevars)
         self.low_energy_model = self.low_energy.get_model()
+
+        list_of_models, list_of_coefficients = self.low_energy.get_list_components()
         self.background_normal.setMax(2*self.data_set_model.sumEntries())
         self.background_extend = ROOT.RooExtendPdf("background_extend", 
                                                    "background_extend", 
                                                    self.low_energy_model, 
                                                    self.background_normal)
+
+        self.extended_models = []
+        i = 0
+        while 1: 
+            amod = list_of_models.at(i)
+            avar = list_of_coefficients.at(i)
+            if not amod: break
+            i += 1
+            extend = ROOT.RooExtendPdf("extend%s" % amod.GetName(),
+                                       "extend%s" % amod.GetName(),
+                                       amod, avar)
+            self.extended_models.append(extend)
+        temp_list = ROOT.RooArgList()
+        temp_list.add(self.model_extend)
+        for amod in self.extended_models:
+            temp_list.add(amod)
         self.added_pdf = ROOT.RooAddPdf("b+s", 
                                         "Background + Signal", 
-                                        ROOT.RooArgList(
-                                        self.background_extend, 
-                                        self.model_extend))
+                                        temp_list)
+                                       #ROOT.RooArgList(
+                                       #self.background_extend, 
+                                       #self.model_extend))
         self.test_variable = self.model_normal
         self.fitting_model = self.added_pdf
         
