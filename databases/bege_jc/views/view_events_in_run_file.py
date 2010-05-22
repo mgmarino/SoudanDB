@@ -16,6 +16,24 @@ def get_view_class():
        if (int_of_doc_id < 20091204180000) {
          return;
        }
+       // Detector put to sleep for power outage, down a week
+       if (int_of_doc_id > 20100315120053 &&
+           int_of_doc_id < 20100319180006) {
+         return;
+       }
+
+       if (int_of_doc_id == 20091217123128 ||
+           int_of_doc_id == 20091217123841) {
+         return;
+       }
+
+       // DAQ range shifted
+       if (int_of_doc_id > 20100209000053 &&
+           int_of_doc_id < 20100215120006) {
+         return;
+       }
+
+
        if (! doc.number_of_entries_in_tier1_root_tree) return;
        emit(doc.number_of_entries_in_tier1_root_tree, 1); 
     }

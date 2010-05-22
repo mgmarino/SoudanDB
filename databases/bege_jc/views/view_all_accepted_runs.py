@@ -30,9 +30,17 @@ function(doc) {
          return;
        }
 
+       // DAQ range shifted
+       if (int_of_doc_id > 20100209000053 &&
+           int_of_doc_id < 20100215120006) {
+         return;
+       }
+
+
        // choose a date to analyze until.
        //if (int_of_doc_id > 20100401000000) {
-       if (int_of_doc_id > 20100201000000) {
+       //if (int_of_doc_id > 20100201000000) {
+       if (int_of_doc_id > 20100515000000) {
          return;
        }
        emit(parseInt(doc._id), [doc.output_data_file_tier_2.lfn,

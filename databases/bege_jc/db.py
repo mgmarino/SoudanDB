@@ -1,8 +1,9 @@
 from SoudanDB.management.soudan_database import DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
-     SoudanServerClass 
+     SoudanServerClass, MGPickleFieldClass 
 from couchdb import schema
 from views import view_all_accepted_runs
+from views import view_all_rejected_runs
 from views import view_all_accepted_runs_ln_fills
 from views import view_all_LN_fills
 from views import view_all_runs
@@ -44,6 +45,10 @@ class BeGeJCDB(SoudanServerClass):
         view = view_first_efficiency_runs.get_view_class()
         return view(self.get_database())
 
+    def get_rejected_runs(self):
+        view = view_all_rejected_runs.get_view_class()
+        return view(self.get_database())
+
     def get_scanning_pulser_runs(self):
         view = view_scanning_pulser_runs.get_view_class()
         return view(self.get_database())
@@ -57,6 +62,19 @@ class BeGeJCDB(SoudanServerClass):
         if not adoc:
             adoc = self.get_ln(doc)
         return adoc
+
+    """
+      Get pulse cut for the server 
+    """
+    def get_pulse_cut_doc(self):
+        doc_name = "pulse_cut_doc" 
+        if doc_name not in self.get_database():  
+            doc = PulseCutClass()
+            doc._set_id(doc_name)
+            self.insert_rundoc(doc)
+        return PulseCutClass.load(
+                     self.get_database(), doc_name)
+
 
     def get_run(self, run_number):
         temp_list = [id.id for id in self.get_run_docs()]
@@ -264,3 +282,9 @@ class LNFillClass(MGDocumentClass):
 
         
 
+class PulseCutClass(MGDocumentClass):
+    """
+      Class which encapsulates the information of generating
+      a cut on aspects of the pulse.
+    """
+    pulse_cut = MGPickleFieldClass()
