@@ -41,6 +41,8 @@ def update_calculations_on_database():
 
     # Which database are we using?
     # Grab all the modules from the update directory
+    # in this particular database
+    # For example, for bege_jc, grab all modules from bege_jc.update
     module_list = []
     current_db_name = '%s.update' % get_current_db_module()
     update_module = my_import(current_db_name)
@@ -50,25 +52,27 @@ def update_calculations_on_database():
         mod = load.load_module("%s.%s" % (current_db_name,name))
         module_list.append(mod)
 
+    # How many cpus can we use at once?
     num_cpus = detectCPUs() 
     print "Performing the following updates: " 
     must_cycle = False
     for amod in module_list: 
         # Get the view to use
         view = amod.get_view()
+        # Get the list of docs needing update
         list_of_docs = view(server.get_database())
         print "  %s" % amod.__name__
 
-        total_list = numpy.array([id.id for id in list_of_docs])
         # Now split up the list for number of cpus
+        total_list = numpy.array([id.id for id in list_of_docs])
         if len(total_list) > 0: must_cycle = True
 
         all_lists = [total_list[i::num_cpus] for i in range(num_cpus)]
 
-        # ship out to threads
+        # ship out to different threads
         # We use a fork because the amount of work done
         # by the child should be fairly significant, making
-        # the amount of time spent to fork negligible.  FixME?
+        # the amount of time spent to fork negligible.  
         thread_list = []
         for alist in all_lists: 
             if len(alist) == 0: continue # Don't send out for 0 length lists
@@ -77,6 +81,8 @@ def update_calculations_on_database():
                 thread_list.append(pid)
             else: # child process
                 del server
+                # The following function calls amod.update_rundoc 
+                # on all the records in alist
                 run_update_calc(SoudanServer, alist, amod.update_rundoc)
                 sys.exit(0)
                 # stop here for the child process
