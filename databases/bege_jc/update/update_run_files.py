@@ -8,11 +8,12 @@ import imp
 from ..views import view_virgin_docs
 from ..views import view_all_accepted_runs
 
-environment_vars={'LD_LIBRARY_PATH' : "/home/mgmarino/software/OrcaRoot/lib:/home/mgmarino/software/MaGe/lib:/home/mgmarino/software/MGDO/lib:/home/mgmarino/software/root/root_v5.26.00/lib:/home/mgmarino/software/geant4/geant4.9.1.p02/lib/Linux-g++:/home/mgmarino/software/CLHEP/2.0.3.2/lib",\
+environment_vars={'LD_LIBRARY_PATH' : 
+                     "/home/mgmarino/software/OrcaRoot/lib:/home/mgmarino/software/MaGe/lib:/home/mgmarino/software/MGDO/lib:/home/mgmarino/software/root/root_v5.26.00/lib:/home/mgmarino/software/geant4/geant4.9.1.p02/lib/Linux-g++:/home/mgmarino/software/CLHEP/2.0.3.2/lib",\
                   'PYTHONPATH' : "/home/mgmarino/software/root/root_v5.26.00/lib",\
                   'MGDODIR' : "/home/mgmarino/software/MGDO"}
 
-make_tier1_from_tier0 = "/home/mgmarino/Dropbox/BeGe/parse_out_BeGe/parseBeGe"
+make_tier1_from_tier0 = "/home/mgmarino/Dropbox/BeGe/ParseBeGeData/parseBeGe"
 make_tier2_from_tier1 = "/home/mgmarino/Dropbox/BeGe/AnalyzeWaveforms/analyze_waveforms.py"
 def update_rundoc(rundoc):
     """
