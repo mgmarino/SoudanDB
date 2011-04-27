@@ -1,5 +1,5 @@
 import couchdb
-from couchdb import schema
+import couchdb.mapping as schema
 from datetime import datetime
 from dateutil import tz
 import ROOT
@@ -7,11 +7,11 @@ import glob
 import re
 import cPickle as pickle
 import types
-from ..utilities import utilities
+from SoudanDB.utilities import utilities
 import os
 import sys
-from . import ServerSingleton, CurrentDBSingleton
-from ..views import view_database_updated_docs
+from SoudanDB.management import ServerSingleton, CurrentDBSingleton
+from SoudanDB.views import view_database_updated_docs
 from calendar import timegm
 from time import strptime
 from couchdb_extensions import MappingField
@@ -27,7 +27,7 @@ def SoudanServer():
 def get_current_db_module():
     return CurrentDBSingleton.get_current_db_module()
 
-majorana_db_server = 'http://127.0.0.1:5984'
+majorana_db_server = '127.0.0.1:5984'
 if local_server:  
     majorana_db_username = ''
     majorana_db_password = ''
@@ -46,7 +46,7 @@ class RunTimeDict(schema.DictField):
       Field to save the run time for a particular run
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           run_seconds = schema.FloatField(),
           run_seconds_error = schema.FloatField()))
 
@@ -56,7 +56,7 @@ class BaselineDict(schema.DictField):
       fit parameters.
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           average_fit_constant=schema.FloatField(),
           average_fit_rms=schema.FloatField(),
           chi_square=schema.FloatField(),
@@ -73,7 +73,7 @@ class CutsDictClass(schema.DictField):
       MapReduce functionality and so will not be used in the future.
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           description_of_cut=schema.TextField(),
           string_of_cut=schema.TextField(),
           passes_cut=schema.BooleanField(),
@@ -86,7 +86,7 @@ class TriggerDataClass(schema.DictField):
       efficiency data.  
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           scaling = schema.FloatField(),
           scaling_err = schema.FloatField(),
           offset = schema.FloatField(),
@@ -99,7 +99,7 @@ class PulserDataClass(schema.DictField):
       pulser parameters with this class.
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           sigma = schema.FloatField(),
           sigma_err = schema.FloatField(),
           mean = schema.FloatField(),
@@ -112,7 +112,7 @@ class QADataClass(schema.DictField):
       upon whether or not QA has been run.
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           qa_check_process_has_been_run = schema.BooleanField(),
           qa_accept_run = schema.BooleanField()))
 
@@ -123,7 +123,7 @@ class NoiseCheckClass(schema.DictField):
       noisy runs.
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           events_in_region_point6_to_10_keV=schema.IntegerField(),
           events_in_region_10_to_70_keV=schema.IntegerField() ))
 
@@ -138,7 +138,7 @@ class DataFileClass(schema.DictField):
         last_mod_time: last modification time of the file.
     """
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           pfn = schema.TextField(),
           lfn = schema.TextField(),
           md5hash = schema.TextField(),
@@ -151,14 +151,14 @@ class AllReducedDataFilesClass(schema.DictField):
     """
 
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(
+        schema.DictField.__init__(self, schema.Mapping.build(
           pulser = DataFileClass(),
           low_energy = DataFileClass(),
           high_energy = DataFileClass() ))
 
 class MGPickleFieldClass(schema.Field):
     """
-      Schema for pickled fields, allowing trivial storage of python
+      Mapping for pickled fields, allowing trivial storage of python
       objects within the database.
     """
     def _to_python(self, value):
@@ -177,7 +177,7 @@ class MGPickleFieldClass(schema.Field):
     def _to_json(self, value):
         return unicode(pickle.dumps(value,0))
 
-class CutDataClass(schema.Schema):
+class CutDataClass(schema.Mapping):
     """
       This class encapsulates data for a cut, returning the efficiency
       of the cut.  Derived classes are in charge of defining the 
@@ -361,8 +361,10 @@ class SoudanServerClass(couchdb.client.Server):
 
     """
     def __init__(self, db_name, cuts_db_name, run_doc_class, cut_doc_class=None):
-        couchdb.client.Server.__init__(self, majorana_db_server)
-        self.resource.http.add_credentials(majorana_db_username, majorana_db_password)
+        full_url = "http://" + majorana_db_server 
+        if majorana_db_username != '' and majorana_db_password != '':
+            full_url = "http://%s:&s@" % (majorana_db_username, majorana_db_password) + majorana_db_server 
+        couchdb.client.Server.__init__(self, full_url)
         if db_name not in self:
             self.soudan_db = self.create(db_name)
             print "Database created."

@@ -1,8 +1,9 @@
 from SoudanDB.management.soudan_database import DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
      SoudanServerClass, MGPickleFieldClass 
-from couchdb import schema
+import couchdb.mapping as schema
 from views import view_all_accepted_runs
+from views import view_annual_modulation
 from views import view_all_rejected_runs
 from views import view_all_accepted_runs_ln_fills
 from views import view_all_LN_fills
@@ -31,6 +32,10 @@ class BeGeJCDB(SoudanServerClass):
                               RunDocumentClass)
     def get_run_docs(self):
         view = view_all_runs.get_view_class()
+        return view(self.get_database())
+
+    def get_annual_mod_runs(self):
+        view = view_annual_modulation.get_view_class()
         return view(self.get_database())
 
     def get_accepted_runs(self):
@@ -169,13 +174,13 @@ def update_database():
 
 class RunTimeDict(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
+        schema.DictField.__init__(self, schema.Mapping.build(\
           run_milliseconds = schema.FloatField(),\
           run_milliseconds_error = schema.FloatField()))
 
 class PulserDataClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
+        schema.DictField.__init__(self, schema.Mapping.build(\
           sigma = schema.ListField(schema.FloatField()),\
           sigma_err = schema.ListField(schema.FloatField()),\
           mean = schema.ListField(schema.FloatField()),\
@@ -183,7 +188,7 @@ class PulserDataClass(schema.DictField):
 
 class AllPulserDataClass(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
+        schema.DictField.__init__(self, schema.Mapping.build(\
           chan_0 = PulserDataClass(),\
           chan_1 = PulserDataClass(),\
           chan_2 = PulserDataClass() ))

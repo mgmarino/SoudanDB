@@ -1,7 +1,7 @@
 from SoudanDB.management.soudan_database import RunTimeDict, DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
      SoudanServerClass 
-from couchdb import schema
+import couchdb.mapping as schema
 import os
 import re
 import glob
@@ -78,7 +78,7 @@ def update_database():
 
 class RunTimeDict(schema.DictField):
     def __init__(self):
-        schema.DictField.__init__(self, schema.Schema.build(\
+        schema.DictField.__init__(self, schema.Mapping.build(\
           run_milliseconds = schema.FloatField(),\
           run_milliseconds_error = schema.FloatField()))
 

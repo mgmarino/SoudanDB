@@ -1,3 +1,4 @@
+import SoudanDB.databases.bege_jc
 from management.soudan_database import SoudanServer
 
 server = SoudanServer()

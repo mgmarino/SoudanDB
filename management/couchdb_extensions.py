@@ -1,4 +1,4 @@
-from couchdb.schema import Field
+from couchdb.mapping import Field
 
 # MappingField rolled by jabronson (see http://code.google.com/p/couchdb-python/issues/detail?id=106)
 class MappingField(Field):
@@ -19,7 +19,7 @@ class MappingField(Field):
     >>> server = Server('http://localhost:5984/')
     >>> db = server.create('python-tests')
 
-    >>> class Book(Schema):
+    >>> class Book(Mapping):
     ...     title = TextField()
     ...     authors = ListField(TextField())
     ...     publish_date = DateField()
@@ -55,7 +55,7 @@ class MappingField(Field):
             if type(f) is type:
                 if issubclass(f, Field):
                     return f()
-                elif issubclass(f, Schema):
+                elif issubclass(f, Mapping):
                     return DictField(f)
             return f
 
