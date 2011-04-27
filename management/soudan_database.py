@@ -363,7 +363,7 @@ class SoudanServerClass(couchdb.client.Server):
     def __init__(self, db_name, cuts_db_name, run_doc_class, cut_doc_class=None):
         full_url = "http://" + majorana_db_server 
         if majorana_db_username != '' and majorana_db_password != '':
-            full_url = "http://%s:&s@" % (majorana_db_username, majorana_db_password) + majorana_db_server 
+            full_url = ("http://%s:%s@" % (majorana_db_username, majorana_db_password)) + majorana_db_server 
         couchdb.client.Server.__init__(self, full_url)
         if db_name not in self:
             self.soudan_db = self.create(db_name)
