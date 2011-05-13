@@ -11,6 +11,7 @@ from views import view_all_runs
 from views import view_all_runs_modification
 from views import view_first_efficiency_runs
 from views import view_scanning_pulser_runs
+from views import view_old_runs
 import os
 import re
 import glob
@@ -57,6 +58,11 @@ class BeGeJCDB(SoudanServerClass):
     def get_scanning_pulser_runs(self):
         view = view_scanning_pulser_runs.get_view_class()
         return view(self.get_database())
+
+    def get_old_runs(self):
+        view = view_old_runs.get_view_class()
+        return view(self.get_database())
+
 
     def get_ln_docs(self):
         view = view_all_LN_fills.get_view_class()
