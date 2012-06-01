@@ -2,16 +2,7 @@ from SoudanDB.management.soudan_database import DataFileClass, \
      QADataClass, MGDateTimeFieldClass, CutsDictClass, MGDocumentClass,\
      SoudanServerClass, MGPickleFieldClass 
 import couchdb.mapping as schema
-from views import view_all_accepted_runs
-from views import view_annual_modulation
-from views import view_all_rejected_runs
-from views import view_all_accepted_runs_ln_fills
-from views import view_all_LN_fills
-from views import view_all_runs
-from views import view_all_runs_modification
-from views import view_first_efficiency_runs
-from views import view_scanning_pulser_runs
-from views import view_old_runs
+import views
 import os
 import re
 import glob
@@ -31,42 +22,40 @@ class BeGeJCDB(SoudanServerClass):
         SoudanServerClass.__init__(self, soudan_db_name, 
                               None,
                               RunDocumentClass)
+    def get_view(self, name):
+        try: 
+            return getattr(views, name).get_view_class()(self.get_database())
+        except AttributeError:
+            # pass it along
+            raise AttributeError("'%s' has no view module '%s'" % (self.__class__.__name__, name))
+            
+
     def get_run_docs(self):
-        view = view_all_runs.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_all_runs")
 
     def get_annual_mod_runs(self):
-        view = view_annual_modulation.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_annual_modulation")
 
     def get_accepted_runs(self):
-        view = view_all_accepted_runs.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_all_accepted_runs")
 
     def get_accepted_runs_ln_fills(self):
-        view = view_all_accepted_runs_ln_fills.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_all_accepted_runs_ln_fills")
 
     def get_efficiency_runs(self):
-        view = view_first_efficiency_runs.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_first_efficiency_runs")
 
     def get_rejected_runs(self):
-        view = view_all_rejected_runs.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_all_rejected_runs")
 
     def get_scanning_pulser_runs(self):
-        view = view_scanning_pulser_runs.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_scanning_pulser_runs")
 
     def get_old_runs(self):
-        view = view_old_runs.get_view_class()
-        return view(self.get_database())
-
+        return self.get_view("view_old_runs")
 
     def get_ln_docs(self):
-        view = view_all_LN_fills.get_view_class()
-        return view(self.get_database())
+        return self.get_view("view_all_LN_fills")
 
     def get_doc(self, doc):
         adoc = self.get_run(doc)
